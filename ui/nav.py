@@ -57,6 +57,7 @@ def nav_groups() -> tuple[NavGroup, ...]:
                 NavPage("disk_usage", "drive-multiple-symbolic"),
             ),
         ),
+        NavGroup("logs", (NavPage("logs", "utilities-terminal-symbolic"),)),
         NavGroup(
             "tools",
             (

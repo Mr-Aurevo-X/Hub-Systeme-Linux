@@ -27,7 +27,15 @@ DEFAULTS: dict[str, Any] = {
     "nav_groups_expanded": {},
     "alert_history": [],
     "log_filter_presets": [],
+    "last_page": "dashboard",
 }
+
+
+def coerce_page(value: object) -> str:
+    from ui.pages import PAGE_KEYS
+
+    key = str(value or "dashboard").strip()
+    return key if key in PAGE_KEYS else "dashboard"
 
 
 def coerce_language(value: object) -> str:

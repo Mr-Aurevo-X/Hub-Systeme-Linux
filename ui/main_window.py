@@ -91,7 +91,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._monitor_stop = threading.Event()
         self._monitor_thread: threading.Thread | None = None
-        self._current_page = "dashboard"
+        self._current_page = app_settings.coerce_page(self._settings.get("last_page"))
         self._process_filter = ""
         self._service_filter = ""
         self._service_chip = "active"  # active | enabled | all
@@ -121,7 +121,7 @@ class MainWindow(Adw.ApplicationWindow):
 
         self._build_ui()
         self._install_actions()
-        self._show_page("dashboard")
+        self._show_page(self._current_page)
         # Non-blocking first paint: start monitoring after the window is mapped.
         GLib.idle_add(self._start_monitoring)
         GLib.timeout_add(700, self._check_startup_compatibility)
@@ -307,7 +307,7 @@ class MainWindow(Adw.ApplicationWindow):
         )
         self._layout = layout
         self._toast_overlay.set_child(layout.widget)
-        self._nav_sidebar.select_page("dashboard", notify=False)
+        self._nav_sidebar.select_page(self._current_page, notify=False)
 
     def _ensure_page(self, key: str) -> Gtk.Widget:
         child = self._stack.get_child_by_name(key)
@@ -330,6 +330,8 @@ class MainWindow(Adw.ApplicationWindow):
             self._nav_sidebar.select_page(key, notify=False)
         self._ensure_page(key)
         self._stack.set_visible_child_name(key)
+        self._settings["last_page"] = key
+        app_settings.save_settings(self._settings)
         if key == "machine":
             self._refresh_machine()
         elif key == "fleet":
