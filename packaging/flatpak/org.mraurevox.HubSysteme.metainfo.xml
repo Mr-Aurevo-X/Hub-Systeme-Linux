@@ -41,6 +41,11 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.4" date="2026-08-23">
+      <description>
+        <p>Check MAJ : /releases/latest + retry HTTP 502/504.</p>
+      </description>
+    </release>
     <release version="1.1.3" date="2026-08-23">
       <description>
         <p>Commandes MAJ : rm + wget --no-continue (évite un vieux .flatpak local).</p>

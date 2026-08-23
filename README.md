@@ -5,7 +5,7 @@
 
 Hub GTK 4 autonome — santé, processus, paquets, disques, journaux (ex-Gest). **Linux uniquement** — distinct du Hub Système Windows (PC Command).
 
-**1.1.3** — [releases](https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases) · GPL-3.0-or-later · © 2026 Mr-Aurevo-X
+**1.1.4** — [releases](https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases) · GPL-3.0-or-later · © 2026 Mr-Aurevo-X
 
 ---
 
@@ -18,10 +18,10 @@ Prérequis : [Flatpak](https://flatpak.org/setup/) + runtime GNOME 49 (installé
 ```bash
 rm -f org.mraurevox.HubSysteme.flatpak
 wget --no-continue -O org.mraurevox.HubSysteme.flatpak \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.3/org.mraurevox.HubSysteme.flatpak
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.4/org.mraurevox.HubSysteme.flatpak
 flatpak install --user -y --reinstall ./org.mraurevox.HubSysteme.flatpak
 wget --no-continue -O INSTALLER-RACCOURCI-FLATPAK.sh \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.3/INSTALLER-RACCOURCI-FLATPAK.sh
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.4/INSTALLER-RACCOURCI-FLATPAK.sh
 bash ./INSTALLER-RACCOURCI-FLATPAK.sh
 flatpak run org.mraurevox.HubSysteme
 ```
@@ -57,10 +57,10 @@ Standalone GTK 4 hub — health, processes, packages, disks, logs (ex-Gest). **L
 ```bash
 rm -f org.mraurevox.HubSysteme.flatpak
 wget --no-continue -O org.mraurevox.HubSysteme.flatpak \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.3/org.mraurevox.HubSysteme.flatpak
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.4/org.mraurevox.HubSysteme.flatpak
 flatpak install --user -y --reinstall ./org.mraurevox.HubSysteme.flatpak
 wget --no-continue -O INSTALLER-RACCOURCI-FLATPAK.sh \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.3/INSTALLER-RACCOURCI-FLATPAK.sh
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.4/INSTALLER-RACCOURCI-FLATPAK.sh
 bash ./INSTALLER-RACCOURCI-FLATPAK.sh
 flatpak run org.mraurevox.HubSysteme
 ```
