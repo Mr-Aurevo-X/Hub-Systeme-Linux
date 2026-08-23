@@ -20,7 +20,7 @@
   <developer id="org.mraurevox">
     <name>Mr-Aurevo-X</name>
   </developer>
-  <url type="homepage">https://github.com/Mr-Aurevo-X/Hub-Systeme</url>
+  <url type="homepage">https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux</url>
   <launchable type="desktop-id">org.mraurevox.HubSysteme.desktop</launchable>
   <categories>
     <category>System</category>

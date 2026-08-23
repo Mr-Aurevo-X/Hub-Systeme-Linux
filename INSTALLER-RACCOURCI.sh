@@ -4,10 +4,10 @@
 set -e
 SHARE="$(cd "$(dirname "$0")" && pwd)"
 if [[ ! -f "$SHARE/LANCER.sh" || ! -f "$SHARE/main.py" ]]; then
-  echo "ERREUR : ce script doit être lancé depuis le dossier Gest_Linux_Pro."
+  echo "ERREUR : ce script doit être lancé depuis le dossier Hub-Systeme."
   echo "  Trouvé : $SHARE"
-  echo "  Sur la VM VirtualBox, utilise par ex. :"
-  echo "    bash \"/media/sf_Partage_VM/Dev Tree/Gest_Linux_Pro/INSTALLER-RACCOURCI.sh\""
+  echo "  Exemple :"
+  echo "    bash \"$SHARE/INSTALLER-RACCOURCI.sh\""
   echo "  ou, déjà dans le dossier :"
   echo "    bash INSTALLER-RACCOURCI.sh"
   exit 1

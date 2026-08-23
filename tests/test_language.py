@@ -125,6 +125,12 @@ _PASS1_KEYS = (
     "pkg_uninstall",
     "pkg_orphans",
     "alerts_history",
+    "clean_confirm_title",
+    "clean_none",
+    "autostart_error",
+    "tools_run",
+    "backup_restore",
+    "backup_delete",
 )
 
 

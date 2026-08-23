@@ -19,9 +19,20 @@ def test_sort_processes_cpu_ram_name() -> None:
     assert process.sort_processes(rows, "nope") == process.sort_processes(rows, "cpu")
 
 
-def test_tree_kill_targets_parent_then_children() -> None:
-    tree = {"pid": 10, "children": [{"pid": 11, "name": "a"}, {"pid": 12, "name": "b"}]}
-    assert process.tree_kill_targets(tree) == [10, 11, 12]
+def test_tree_kill_targets_descendants_then_parent() -> None:
+    tree = {
+        "pid": 10,
+        "children": [
+            {"pid": 11, "children": [{"pid": 13}]},
+            {"pid": 12},
+        ],
+    }
+    assert process.tree_kill_targets(tree) == [13, 11, 12, 10]
+
+
+def test_tree_kill_targets_skips_pid1() -> None:
+    tree = {"pid": 1, "children": [{"pid": 8}]}
+    assert process.tree_kill_targets(tree) == [8]
 
 
 def test_kill_tree_sends_term_to_each_pid(monkeypatch) -> None:
@@ -37,4 +48,4 @@ def test_kill_tree_sends_term_to_each_pid(monkeypatch) -> None:
         lambda pid: {"pid": pid, "children": [{"pid": 22}, {"pid": 23}]},
     )
     process.kill_tree(21)
-    assert seen == [21, 22, 23]
+    assert seen == [22, 23, 21]

@@ -688,16 +688,7 @@ def process_details(pid: int) -> dict[str, Any]:
     }
 
 
-def process_tree(pid: int) -> dict[str, Any]:
-    details = process_details(pid)
-    if details.get("error"):
-        return details
-    ppid = int(details.pop("_ppid", 0) or 0)
-    parent = None
-    if ppid > 0:
-        parent_info = process_details(ppid)
-        if not parent_info.get("error"):
-            parent = {"pid": ppid, "name": parent_info.get("name") or "?"}
+def _direct_children(pid: int) -> list[dict[str, Any]]:
     children: list[dict[str, Any]] = []
     for entry in Path("/proc").iterdir():
         if not entry.name.isdigit():
@@ -719,6 +710,31 @@ def process_tree(pid: int) -> dict[str, Any]:
         if child_ppid != pid:
             continue
         children.append({"pid": int(entry.name), "name": stat[stat.find("(") + 1 : rpar]})
+    return children
+
+
+def process_tree(pid: int) -> dict[str, Any]:
+    details = process_details(pid)
+    if details.get("error"):
+        return details
+    ppid = int(details.pop("_ppid", 0) or 0)
+    parent = None
+    if ppid > 0:
+        parent_info = process_details(ppid)
+        if not parent_info.get("error"):
+            parent = {"pid": ppid, "name": parent_info.get("name") or "?"}
+    children: list[dict[str, Any]] = []
+    seen = {int(pid)}
+    queue = [int(pid)]
+    while queue:
+        current = queue.pop(0)
+        for child in _direct_children(current):
+            cpid = int(child["pid"])
+            if cpid <= 1 or cpid in seen:
+                continue
+            seen.add(cpid)
+            children.append(child)
+            queue.append(cpid)
     details["parent"] = parent
     details["children"] = children
     return details

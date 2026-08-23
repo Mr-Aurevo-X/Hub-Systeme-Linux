@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Publie le .flatpak Gest sur Mr-Aurevo-X/Hub-Systeme (tag vX.Y.Z).
+# Publie le .flatpak Hub Système sur Mr-Aurevo-X/Hub-Systeme-Linux (tag vX.Y.Z).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PUBLIC_REPO="Mr-Aurevo-X/Hub-Systeme"
+PUBLIC_REPO="Mr-Aurevo-X/Hub-Systeme-Linux"
 APP_ID="org.mraurevox.HubSysteme"
 
 FROM_DIR=""

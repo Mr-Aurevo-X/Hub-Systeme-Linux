@@ -20,9 +20,7 @@ from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
 
 from core import (
     alerts,
-    autostart,
     backup,
-    cleaner,
     compat,
     connections,
     firewall,
@@ -34,10 +32,8 @@ from core import (
     monitoring,
     network_ctl,
     packages,
-    plugins,
     power,
     process,
-    report,
     services,
     settings as app_settings,
     updater,
@@ -1187,118 +1183,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         run_in_thread(work, done)
 
-    # --- cleaner ---
-
     def _build_cleaner_page(self) -> Gtk.Widget:
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        root.set_margin_top(18)
-        root.set_margin_bottom(18)
-        root.set_margin_start(18)
-        root.set_margin_end(18)
+        from ui.pages import cleaner as cleaner_page
 
-        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        scan_btn = Gtk.Button(label=i18n.t("scan"))
-        scan_btn.add_css_class("suggested-action")
-        scan_btn.connect("clicked", lambda *_: self._refresh_cleaner(show_spinner=True))
-        select_all_btn = Gtk.Button(label=i18n.t("select_all"))
-        select_all_btn.connect("clicked", lambda *_: self._cleaner_select_all(True))
-        select_none_btn = Gtk.Button(label=i18n.t("select_none"))
-        select_none_btn.connect("clicked", lambda *_: self._cleaner_select_all(False))
-        clean_btn = Gtk.Button(label=i18n.t("clean_selection"))
-        clean_btn.add_css_class("destructive-action")
-        clean_btn.connect("clicked", lambda *_: self._confirm_clean())
-        self._track_privileged(clean_btn)
-        self._cleaner_spinner = make_spinner(size=18)
-        self._cleaner_spinner.set_visible(False)
-        controls.append(scan_btn)
-        controls.append(select_all_btn)
-        controls.append(select_none_btn)
-        controls.append(clean_btn)
-        controls.append(self._cleaner_spinner)
-        root.append(controls)
-
-        self._cleaner_total = Gtk.Label(label=i18n.t("reclaimable", size="—"), xalign=0)
-        self._cleaner_total.add_css_class("title-4")
-        root.append(self._cleaner_total)
-
-        self._cleaner_checks: dict[str, Gtk.CheckButton] = {}
-        self._cleaner_list = Gtk.ListBox()
-        self._cleaner_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._cleaner_list.add_css_class("boxed-list")
-        clamp = Adw.Clamp(maximum_size=900)
-        clamp.set_child(self._cleaner_list)
-        root.append(clamp)
-        return root
-
-    def _cleaner_select_all(self, active: bool) -> None:
-        for check in self._cleaner_checks.values():
-            check.set_active(active)
+        return cleaner_page.build(self)
 
     def _refresh_cleaner(self, *, show_spinner: bool = False) -> None:
-        if show_spinner:
-            self._cleaner_spinner.set_visible(True)
-            self._set_busy(True)
+        from ui.pages import cleaner as cleaner_page
 
-        def work() -> list[dict[str, Any]]:
-            return cleaner.scan()
-
-        def done(result: Any, error: BaseException | None) -> None:
-            if show_spinner:
-                self._set_busy(False)
-            self._cleaner_spinner.set_visible(False)
-            if error is not None:
-                show_toast(self._toast_overlay, f"Nettoyage: {error}")
-                return
-            self._clear_listbox(self._cleaner_list)
-            self._cleaner_checks.clear()
-            total = 0.0
-            for item in result or []:
-                total += float(item.get("size_mib") or 0)
-                row = Adw.ActionRow()
-                row.set_title(item["label"])
-                paths = ", ".join(item.get("paths") or []) or "—"
-                root_tag = " · root" if item.get("requires_root") else ""
-                row.set_subtitle(f"{item.get('size_mib', 0):.2f} Mio · {paths}{root_tag}")
-                check = Gtk.CheckButton()
-                check.set_active(item.get("size_mib", 0) > 0)
-                check.set_valign(Gtk.Align.CENTER)
-                row.add_prefix(check)
-                self._cleaner_checks[item["id"]] = check
-                self._cleaner_list.append(row)
-            self._cleaner_total.set_text(i18n.t("reclaimable", size=f"{total:.2f} Mio"))
-
-        run_in_thread(work, done)
-
-    def _confirm_clean(self) -> None:
-        selected = [key for key, check in self._cleaner_checks.items() if check.get_active()]
-        if not selected:
-            show_toast(self._toast_overlay, "Aucune cible sélectionnée")
-            return
-        confirm_dialog(
-            self,
-            "Lancer le nettoyage ?",
-            "Les fichiers sélectionnés seront supprimés. Les actions root utilisent pkexec.",
-            confirm_label="Nettoyer",
-            on_confirm=lambda: self._do_clean(selected),
-        )
-
-    def _do_clean(self, targets: list[str]) -> None:
-        self._set_busy(True)
-        show_toast(self._toast_overlay, "Nettoyage en cours…", timeout=4)
-
-        def work() -> dict[str, Any]:
-            return cleaner.clean(targets)
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            freed = result.get("freed_mib", 0) if isinstance(result, dict) else 0
-            show_toast(self._toast_overlay, f"Nettoyage terminé — {freed:.2f} Mio libérés")
-            self._refresh_cleaner()
-
-        run_in_thread(work, done)
+        cleaner_page.refresh(self, show_spinner=show_spinner)
 
     # --- packages ---
 
@@ -1981,104 +1874,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         run_in_thread(work, done)
 
-    # --- autostart ---
-
     def _build_autostart_page(self) -> Gtk.Widget:
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        bar.add_css_class("page-toolbar")
-        title = Gtk.Label(label=i18n.t("autostart_title"), xalign=0)
-        title.add_css_class("heading")
-        title.set_hexpand(True)
-        self._autostart_spinner = make_spinner(size=18)
-        self._autostart_spinner.set_visible(False)
-        refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
-        refresh_btn.connect("clicked", lambda *_: self._refresh_autostart(show_spinner=True))
-        bar.append(title)
-        bar.append(self._autostart_spinner)
-        bar.append(refresh_btn)
-        root.append(bar)
+        from ui.pages import autostart as autostart_page
 
-        self._autostart_scrolled = Gtk.ScrolledWindow()
-        self._autostart_scrolled.set_vexpand(True)
-        self._autostart_list = Gtk.ListBox()
-        self._autostart_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._autostart_list.add_css_class("boxed-list")
-        self._autostart_scrolled.set_child(self._autostart_list)
-        clamp = Adw.Clamp(maximum_size=1000)
-        clamp.set_margin_start(12)
-        clamp.set_margin_end(12)
-        clamp.set_margin_bottom(12)
-        clamp.set_child(self._autostart_scrolled)
-        root.append(clamp)
-        return root
+        return autostart_page.build(self)
 
     def _refresh_autostart(self, *, show_spinner: bool = False) -> None:
-        if show_spinner:
-            self._autostart_spinner.set_visible(True)
+        from ui.pages import autostart as autostart_page
 
-        def work() -> list[dict[str, Any]]:
-            return autostart.list_all()
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._autostart_spinner.set_visible(False)
-            if error is not None:
-                show_toast(self._toast_overlay, f"Démarrage: {error}")
-                return
-            self._clear_listbox(self._autostart_list)
-            for item in result or []:
-                kind = item.get("kind")
-                title = str(item.get("name") or item.get("id"))
-                desc = str(item.get("description") or "")
-                kind_lbl = "Desktop" if kind == "desktop" else "Service utilisateur"
-                row = Adw.ActionRow()
-                row.set_title(title)
-                row.set_subtitle(f"{kind_lbl} · {desc}".strip(" ·"))
-                switch = Gtk.Switch()
-                switch.set_valign(Gtk.Align.CENTER)
-                guard = {"block": True}
-
-                def on_toggle(
-                    sw: Gtk.Switch,
-                    _p: object,
-                    it: dict[str, Any] = item,
-                    g: dict[str, bool] = guard,
-                ) -> None:
-                    if g["block"]:
-                        return
-                    self._toggle_autostart(it, sw.get_active())
-
-                switch.connect("notify::active", on_toggle)
-                switch.set_active(bool(item.get("enabled")))
-                guard["block"] = False
-                row.add_suffix(switch)
-                self._autostart_list.append(row)
-
-        run_in_thread(work, done)
-
-    def _toggle_autostart(self, item: dict[str, Any], enabled: bool) -> None:
-        kind = item.get("kind")
-        ident = str(item.get("id") or "")
-        self._set_busy(True)
-
-        def work() -> None:
-            if kind == "desktop":
-                autostart.set_desktop_enabled(ident, enabled)
-            else:
-                autostart.toggle_user_service(ident, enabled)
-
-        def done(_result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                self._refresh_autostart()
-                return
-            show_toast(
-                self._toast_overlay,
-                f"{'Activé' if enabled else 'Désactivé'}: {ident}",
-            )
-
-        run_in_thread(work, done)
+        autostart_page.refresh(self, show_spinner=show_spinner)
 
     # --- network ---
 
@@ -2801,146 +2605,15 @@ class MainWindow(Adw.ApplicationWindow):
 
         run_in_thread(work, done)
 
-    # --- tools ---
-
     def _build_tools_page(self) -> Gtk.Widget:
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        bar.add_css_class("page-toolbar")
-        title = Gtk.Label(label=i18n.t("tools_title"), xalign=0)
-        title.add_css_class("heading")
-        title.set_hexpand(True)
-        self._tools_spinner = make_spinner(size=18)
-        self._tools_spinner.set_visible(False)
-        refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
-        refresh_btn.connect("clicked", lambda *_: self._refresh_tools(show_spinner=True))
-        bar.append(title)
-        bar.append(self._tools_spinner)
-        bar.append(refresh_btn)
-        root.append(bar)
+        from ui.pages import tools as tools_page
 
-        scrolled = Gtk.ScrolledWindow()
-        scrolled.set_vexpand(True)
-        clamp = Adw.Clamp(maximum_size=900)
-        clamp.set_margin_start(12)
-        clamp.set_margin_end(12)
-        clamp.set_margin_bottom(12)
-        box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18)
-
-        report_group = Adw.PreferencesGroup()
-        report_group.set_title(i18n.t("html_report"))
-        export_row = Adw.ActionRow()
-        export_row.set_title(i18n.t("export_health"))
-        export_row.set_subtitle(i18n.t("html_report_sub"))
-        export_btn = Gtk.Button(label=i18n.t("export"))
-        export_btn.add_css_class("suggested-action")
-        export_btn.set_valign(Gtk.Align.CENTER)
-        export_btn.connect("clicked", lambda *_: self._export_html_report())
-        export_row.add_suffix(export_btn)
-        report_group.add(export_row)
-        box.append(report_group)
-
-        plugins_group = Adw.PreferencesGroup()
-        plugins_group.set_title(i18n.t("plugins"))
-        ensure_row = Adw.ActionRow()
-        ensure_row.set_title(i18n.t("create_plugin_example"))
-        ensure_row.set_subtitle(str(plugins.plugins_dir()))
-        ensure_btn = Gtk.Button(label=i18n.t("create_sample"))
-        ensure_btn.set_valign(Gtk.Align.CENTER)
-        ensure_btn.connect("clicked", lambda *_: self._ensure_example_plugin())
-        ensure_row.add_suffix(ensure_btn)
-        plugins_group.add(ensure_row)
-        box.append(plugins_group)
-
-        self._plugins_list = Gtk.ListBox()
-        self._plugins_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._plugins_list.add_css_class("boxed-list")
-        box.append(self._section(i18n.t("plugins_scripts"), self._plugins_list))
-
-        clamp.set_child(box)
-        scrolled.set_child(clamp)
-        root.append(scrolled)
-        return root
-
-    def _export_html_report(self) -> None:
-        self._set_busy(True)
-        show_toast(self._toast_overlay, "Génération du rapport…", timeout=2)
-
-        def work() -> Path:
-            return report.export_report(report.default_report_path())
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            show_toast(self._toast_overlay, f"Rapport: {result}")
-
-        run_in_thread(work, done)
-
-    def _ensure_example_plugin(self) -> None:
-        def work() -> Path:
-            return plugins.ensure_example_plugin()
-
-        def done(result: Any, error: BaseException | None) -> None:
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            show_toast(self._toast_overlay, f"Exemple: {result}")
-            self._refresh_tools()
-
-        run_in_thread(work, done)
-
-    def _run_plugin(self, name: str) -> None:
-        self._set_busy(True)
-        show_toast(self._toast_overlay, f"Exécution de {name}…", timeout=2)
-
-        def work() -> dict[str, Any]:
-            return plugins.run_plugin(name)
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            ok = bool((result or {}).get("ok"))
-            out = ((result or {}).get("stdout") or "").strip()
-            err = ((result or {}).get("stderr") or "").strip()
-            msg = out or err or ("OK" if ok else "Échec")
-            show_toast(self._toast_overlay, msg[:180], timeout=5)
-
-        run_in_thread(work, done)
+        return tools_page.build(self)
 
     def _refresh_tools(self, *, show_spinner: bool = False) -> None:
-        if show_spinner:
-            self._tools_spinner.set_visible(True)
+        from ui.pages import tools as tools_page
 
-        def work() -> list[dict[str, Any]]:
-            plugins.ensure_example_plugin()
-            return plugins.list_plugins()
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._tools_spinner.set_visible(False)
-            if error is not None:
-                show_toast(self._toast_overlay, f"Outils: {error}")
-                return
-            self._clear_listbox(self._plugins_list)
-            for item in result or []:
-                row = ActionListRow(
-                    str(item.get("name")),
-                    str(item.get("path")),
-                    button_label="Exécuter",
-                    button_css="suggested-action",
-                    on_clicked=lambda n=str(item.get("name")): self._run_plugin(n),
-                )
-                row.set_busy(self._busy_ops > 0)
-                self._plugins_list.append(row)
-            if not (result or []):
-                self._plugins_list.append(
-                    Adw.ActionRow(title="Aucun plugin", subtitle=str(plugins.plugins_dir()))
-                )
-
-        run_in_thread(work, done)
+        tools_page.refresh(self, show_spinner=show_spinner)
 
     # --- backup / timeshift ---
 
@@ -2955,250 +2628,14 @@ class MainWindow(Adw.ApplicationWindow):
         sessions_page.refresh(self, show_spinner=show_spinner)
 
     def _build_backup_page(self) -> Gtk.Widget:
-        root = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
-        self._backup_stack = Gtk.Stack()
-        self._backup_stack.set_vexpand(True)
+        from ui.pages import backup as backup_page
 
-        self._backup_status_page = Adw.StatusPage()
-        self._backup_status_page.set_icon_name("drive-harddisk-symbolic")
-        self._backup_status_page.set_title(i18n.t("snapshots"))
-        self._backup_status_page.set_description("Vérification…")
-        status_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        status_box.set_halign(Gtk.Align.CENTER)
-        refresh_missing = Gtk.Button(label="Actualiser")
-        refresh_missing.connect("clicked", lambda *_: self._refresh_backup(show_spinner=True))
-        status_box.append(refresh_missing)
-        self._backup_status_page.set_child(status_box)
-        self._backup_stack.add_named(self._backup_status_page, "status")
-
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-        content.set_margin_top(18)
-        content.set_margin_bottom(18)
-        content.set_margin_start(18)
-        content.set_margin_end(18)
-
-        self._backup_status = Gtk.Label(label=f"{i18n.t('snapshots')}: —", xalign=0)
-        self._backup_status.add_css_class("title-4")
-        content.append(self._backup_status)
-
-        controls = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
-        refresh_btn = Gtk.Button(label=i18n.t("refresh"))
-        refresh_btn.connect("clicked", lambda *_: self._refresh_backup(show_spinner=True))
-        load_btn = Gtk.Button(label=i18n.t("load_snapshots_admin"))
-        load_btn.connect(
-            "clicked",
-            lambda *_: self._refresh_backup(show_spinner=True, privileged=True),
-        )
-        create_btn = Gtk.Button(label=i18n.t("create_snapshot"))
-        create_btn.add_css_class("suggested-action")
-        create_btn.connect("clicked", lambda *_: self._confirm_snapshot())
-        self._track_privileged(load_btn)
-        self._track_privileged(create_btn)
-        self._backup_spinner = make_spinner(size=18)
-        self._backup_spinner.set_visible(False)
-        self._btrfs_assistant_btn = Gtk.Button(label=i18n.t("open_btrfs_assistant"))
-        self._btrfs_assistant_btn.set_visible(False)
-        self._btrfs_assistant_btn.connect(
-            "clicked",
-            lambda *_: self._open_btrfs_assistant(),
-        )
-        controls.append(refresh_btn)
-        controls.append(load_btn)
-        controls.append(create_btn)
-        controls.append(self._btrfs_assistant_btn)
-        controls.append(self._backup_spinner)
-        content.append(controls)
-
-        self._snapshot_list = Gtk.ListBox()
-        self._snapshot_list.set_selection_mode(Gtk.SelectionMode.NONE)
-        self._snapshot_list.add_css_class("boxed-list")
-        clamp = Adw.Clamp(maximum_size=900)
-        clamp.set_child(self._snapshot_list)
-        content.append(clamp)
-        self._backup_stack.add_named(content, "content")
-
-        root.append(self._backup_stack)
-        return root
+        return backup_page.build(self)
 
     def _refresh_backup(self, *, show_spinner: bool = False, privileged: bool = False) -> None:
-        if show_spinner:
-            self._backup_spinner.set_visible(True)
-        if privileged:
-            show_toast(
-                self._toast_overlay,
-                i18n.t("load_snapshots_admin"),
-                timeout=4,
-            )
+        from ui.pages import backup as backup_page
 
-        def work() -> tuple[dict[str, Any], list[dict[str, Any]], str]:
-            st = backup.status()
-            snaps: list[dict[str, Any]] = []
-            list_error = ""
-            if st.get("available"):
-                try:
-                    snaps = backup.list_snapshots(privileged=privileged)
-                    list_error = ""
-                except backup.BackupError as exc:
-                    snaps = []
-                    list_error = str(exc)
-            return st, snaps, list_error
-
-        def done(result: Any, error: BaseException | None) -> None:
-            self._backup_spinner.set_visible(False)
-            if error is not None:
-                show_toast(self._toast_overlay, f"{i18n.t('snapshots')}: {error}")
-                self._backup_status_page.set_title(i18n.t("snapshots"))
-                self._backup_status_page.set_description(str(error))
-                self._backup_stack.set_visible_child_name("status")
-                return
-            st, snaps, list_error = result
-            if not st.get("available"):
-                self._backup_status_page.set_icon_name("dialog-warning-symbolic")
-                self._backup_status_page.set_title(i18n.t("snapshots"))
-                self._backup_status_page.set_description(
-                    st.get("message") or i18n.t("snapshots_desc")
-                )
-                self._backup_stack.set_visible_child_name("status")
-                return
-
-            self._backup_stack.set_visible_child_name("content")
-            status_msg = str(st.get("message") or "").strip()
-            if list_error:
-                status_msg = list_error
-            elif snaps:
-                status_msg = i18n.t("snapshots_n", count=len(snaps))
-            backend = str(st.get("backend") or "?")
-            assist = st.get("btrfs_assistant")
-            if hasattr(self, "_btrfs_assistant_btn"):
-                self._btrfs_assistant_btn.set_visible(bool(assist))
-            self._backup_status.set_text(f"{i18n.t('backend')}: {backend} — {status_msg}")
-            self._clear_listbox(self._snapshot_list)
-            if not snaps:
-                row = Adw.ActionRow()
-                row.set_title(i18n.t("no_snapshot"))
-                row.set_subtitle(
-                    list_error
-                    or "Cliquez « Charger les clichés (admin) » ou créez un snapshot."
-                )
-                self._snapshot_list.append(row)
-                return
-            for snap in snaps:
-                name = str(snap.get("name") or "")
-                row = Adw.ActionRow()
-                row.set_title(name or "?")
-                row.set_subtitle(
-                    f"{snap.get('date', '')} · {snap.get('type', snap.get('tags', ''))} · {snap.get('description', '')}"
-                )
-                restore_btn = Gtk.Button(label="Restaurer")
-                restore_btn.add_css_class("destructive-action")
-                restore_btn.set_valign(Gtk.Align.CENTER)
-                restore_btn.set_sensitive(self._busy_ops == 0)
-                restore_btn.connect("clicked", lambda *_a, n=name: self._confirm_restore(n))
-                row.add_suffix(restore_btn)
-                if snap.get("backend") == "snapper" and name not in {"0", ""}:
-                    del_btn = Gtk.Button(label="Supprimer")
-                    del_btn.set_valign(Gtk.Align.CENTER)
-                    del_btn.connect("clicked", lambda *_a, n=name: self._confirm_delete_snap(n))
-                    row.add_suffix(del_btn)
-                self._snapshot_list.append(row)
-
-        run_in_thread(work, done)
-
-    def _confirm_snapshot(self) -> None:
-        confirm_dialog(
-            self,
-            i18n.t("create_snapshot"),
-            i18n.t("snapshots_desc"),
-            confirm_label=i18n.t("create"),
-            destructive=False,
-            on_confirm=self._do_create_snapshot,
-        )
-
-    def _do_create_snapshot(self) -> None:
-        self._set_busy(True)
-        show_toast(self._toast_overlay, i18n.t("snapshot_creating"), timeout=5)
-
-        def work() -> dict[str, Any]:
-            return backup.create_snapshot(i18n.t("snapshot_comment"))
-
-        def done(_result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            show_toast(self._toast_overlay, i18n.t("snapshot_created"))
-            self._refresh_backup(privileged=True)
-
-        run_in_thread(work, done)
-
-    def _confirm_restore(self, name: str) -> None:
-        if not name:
-            show_toast(self._toast_overlay, "Cliché invalide")
-            return
-        confirm_dialog(
-            self,
-            f"Restaurer le cliché {name} ?",
-            "Cette opération réécrit les fichiers système via pkexec timeshift "
-            "et peut nécessiter un redémarrage. Confirmez uniquement si vous "
-            "êtes prêt à restaurer l'hôte.",
-            confirm_label="Restaurer",
-            destructive=True,
-            on_confirm=lambda: self._do_restore_snapshot(name),
-        )
-
-    def _do_restore_snapshot(self, name: str) -> None:
-        self._set_busy(True)
-        show_toast(self._toast_overlay, f"Restauration de {name}…", timeout=8)
-
-        def work() -> dict[str, Any]:
-            return backup.restore_snapshot(name)
-
-        def done(_result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            show_toast(
-                self._toast_overlay,
-                "Restauration terminée. Redémarrez le système si Timeshift le demande.",
-                timeout=8,
-            )
-            self._refresh_backup(privileged=True)
-
-        run_in_thread(work, done)
-
-
-    def _open_btrfs_assistant(self) -> None:
-        try:
-            backup.open_btrfs_assistant()
-        except backup.BackupError as exc:
-            show_toast(self._toast_overlay, str(exc))
-
-    def _confirm_delete_snap(self, name: str) -> None:
-        confirm_dialog(
-            self,
-            f"Supprimer le cliché {name} ?",
-            "Suppression Snapper via pkexec.",
-            confirm_label="Supprimer",
-            destructive=True,
-            on_confirm=lambda: self._do_delete_snap(name),
-        )
-
-    def _do_delete_snap(self, name: str) -> None:
-        self._set_busy(True)
-
-        def work() -> dict[str, Any]:
-            return backup.delete_snapshot(name)
-
-        def done(_result: Any, error: BaseException | None) -> None:
-            self._set_busy(False)
-            if error is not None:
-                show_toast(self._toast_overlay, str(error))
-                return
-            show_toast(self._toast_overlay, f"Cliché {name} supprimé")
-            self._refresh_backup(privileged=True)
-
-        run_in_thread(work, done)
+        backup_page.refresh(self, show_spinner=show_spinner, privileged=privileged)
 
     # --- monitoring thread ---
 

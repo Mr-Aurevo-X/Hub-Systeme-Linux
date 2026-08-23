@@ -271,22 +271,23 @@ def renice_process(pid: int, nice: int) -> None:
 
 
 def tree_kill_targets(tree: dict[str, Any]) -> list[int]:
-    """Parent PID first, then direct children (no recursion)."""
+    """Descendants first (post-order), then the root. Skip pid <= 1."""
     pids: list[int] = []
-    raw = tree.get("pid")
-    if isinstance(raw, int) and raw > 0:
-        pids.append(raw)
-    for child in tree.get("children") or []:
-        if not isinstance(child, dict):
-            continue
-        cid = child.get("pid")
-        if isinstance(cid, int) and cid > 0 and cid not in pids:
-            pids.append(cid)
+
+    def walk(node: dict[str, Any]) -> None:
+        for child in node.get("children") or []:
+            if isinstance(child, dict):
+                walk(child)
+        raw = node.get("pid")
+        if isinstance(raw, int) and raw > 1 and raw not in pids:
+            pids.append(raw)
+
+    walk(tree)
     return pids
 
 
 def kill_tree(pid: int) -> list[int]:
-    """SIGTERM the process and its direct children."""
+    """SIGTERM descendants first, then the process (skip pid <= 1)."""
     tree = process_tree(pid)
     sent: list[int] = []
     for target in tree_kill_targets(tree):
@@ -320,7 +321,7 @@ def process_tree(pid: int) -> dict[str, Any]:
         except (psutil.Error, PermissionError):
             parent = None
         try:
-            for child in proc.children(recursive=False):
+            for child in proc.children(recursive=True):
                 try:
                     children.append({"pid": child.pid, "name": child.name()})
                 except (psutil.Error, PermissionError):
