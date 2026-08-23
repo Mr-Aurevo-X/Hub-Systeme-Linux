@@ -30,6 +30,17 @@ def format_app_line(name: str, version: str) -> str:
     return f"{name} {version}".strip()
 
 
+def content_title_parts(
+    page: str,
+    *,
+    app_name: str | None = None,
+    app_version: str | None = None,
+) -> tuple[str, str]:
+    name = chrome_config.APP_NAME if app_name is None else app_name
+    version = chrome_config.APP_VERSION if app_version is None else app_version
+    return page, format_app_line(name, version)
+
+
 def language_from_scale(value: float) -> str:
     return "en" if value >= 0.5 else "fr"
 
@@ -88,8 +99,9 @@ class ShellLayout:
         return self._content_header
 
     def set_page_title(self, title: str) -> None:
-        self._page_title.set_title(title)
-        self._page_title.set_subtitle("")
+        page, brand = content_title_parts(title)
+        self._page_title.set_title(page)
+        self._page_title.set_subtitle(brand)
 
     def _sync_lang_slider_labels(self) -> None:
         active_fr = self._lang == "fr"
@@ -221,7 +233,8 @@ def build_main_layout(
     sidebar_panel.append(header_s)
     sidebar_panel.append(nav_scroll)
 
-    page_title_w = Adw.WindowTitle(title=page_title, subtitle="")
+    page, brand_line = content_title_parts(page_title)
+    page_title_w = Adw.WindowTitle(title=page, subtitle=brand_line)
     content_header = Adw.HeaderBar()
     content_header.add_css_class("uni-titlebar")
     content_header.set_title_widget(page_title_w)

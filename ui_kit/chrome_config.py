@@ -1,10 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""
-App chrome configuration — REMPLIR après copie du kit dans une app.
-
-- APP_NAME, APP_VERSION, CONFIG_APP_ID
-- legal : chemins ui_kit/legal/*.md ou texte inline ci-dessous
-"""
+"""Chrome Uni-UI — Hub Système."""
 
 from __future__ import annotations
 
@@ -12,15 +7,23 @@ from pathlib import Path
 
 from ui_kit.donation_urls import DONATE_DISCORD, DONATE_PAYPAL, DONATE_REVOLUT
 
-# --- À remplir ---
-APP_NAME = "MyApp"
-APP_VERSION = "0.0.0"
-CONFIG_APP_ID = "my-app"
+_REPO_ROOT = Path(__file__).resolve().parents[1]
 
-# Langue par défaut des strings kit (fr | en)
+
+def _read_version() -> str:
+    path = _REPO_ROOT / "VERSION"
+    if path.is_file():
+        text = path.read_text(encoding="utf-8").strip()
+        if text:
+            return text
+    return "1.0.0"
+
+
+APP_NAME = "Hub Système"
+APP_VERSION = _read_version()
+CONFIG_APP_ID = "hub-systeme"
 UI_LANGUAGE = "fr"
 
-# Don (prérempli profil GitHub — override si besoin)
 DONATE_URLS = {
     "discord": DONATE_DISCORD,
     "revolut": DONATE_REVOLUT,
@@ -53,15 +56,15 @@ def _read_legal_file(name: str, fallback: str) -> str:
 
 LEGAL_RGPD = _read_legal_file(
     "rgpd.md",
-    "À compléter : vie privée / RGPD pour cette application.",
+    "Données 100 % locales — ~/.config/Mr-Aurevo-X/hubs/systeme/",
 )
 LEGAL_CGU = _read_legal_file(
     "cgu.md",
-    "À compléter : conditions d'utilisation (CGU).",
+    "Usage local. Pas de mise à jour automatique.",
 )
 LEGAL_LICENSES = _read_legal_file(
     "licenses.md",
-    "À compléter : licences du logiciel (ex. GPL-3.0-or-later).",
+    "Hub Système — GNU GPL-3.0-or-later © 2026 Mr-Aurevo-X.",
 )
 
 
