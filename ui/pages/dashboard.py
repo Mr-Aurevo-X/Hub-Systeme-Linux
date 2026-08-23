@@ -105,16 +105,20 @@ def build(win: Any) -> Gtk.Widget:
     if banner_cls is not None:
         win._dash_banner = banner_cls.new("")
         win._dash_banner.set_revealed(False)
-        win._dash_banner.set_button_label(i18n.t("alerts_history"))
-        win._dash_banner.connect("button-clicked", lambda *_: present_alert_history_dialog(win))
+        win._dash_banner.set_button_label(i18n.t("dash_view_processes"))
+        win._dash_banner.connect("button-clicked", lambda *_: win._goto_page("processes"))
         box.append(win._dash_banner)
     else:
         win._dash_banner = None
         win._dash_alert_row = Adw.ActionRow(title=i18n.t("alerts"), subtitle="")
         win._dash_alert_row.set_visible(False)
-        alert_btn = Gtk.Button(label=i18n.t("alerts_history"))
+        win._dash_alert_row.set_activatable(True)
+        win._dash_alert_row.connect(
+            "activated", lambda *_: present_alert_history_dialog(win)
+        )
+        alert_btn = Gtk.Button(label=i18n.t("dash_view_processes"))
         alert_btn.set_valign(Gtk.Align.CENTER)
-        alert_btn.connect("clicked", lambda *_: present_alert_history_dialog(win))
+        alert_btn.connect("clicked", lambda *_: win._goto_page("processes"))
         win._dash_alert_row.add_suffix(alert_btn)
         box.append(win._dash_alert_row)
 
@@ -129,6 +133,11 @@ def build(win: Any) -> Gtk.Widget:
     win._health_row = Adw.ActionRow(title=i18n.t("health_title"), subtitle="—")
     win._health_row.set_activatable(True)
     win._health_row.connect("activated", lambda *_: win._show_health_dialog())
+    win._alerts_history_row = Adw.ActionRow(title=i18n.t("alerts_history"), subtitle="—")
+    win._alerts_history_row.set_activatable(True)
+    win._alerts_history_row.connect(
+        "activated", lambda *_: present_alert_history_dialog(win)
+    )
     win._sys_host_row = Adw.ActionRow(title=i18n.t("dash_host"), subtitle="—")
     win._sys_kernel_row = Adw.ActionRow(title=i18n.t("dash_kernel"), subtitle="—")
     win._sys_uptime_row = Adw.ActionRow(title=i18n.t("dash_uptime"), subtitle="—")
@@ -143,6 +152,7 @@ def build(win: Any) -> Gtk.Widget:
     win._smart_items = []
     for row in (
         win._health_row,
+        win._alerts_history_row,
         win._sys_host_row,
         win._sys_kernel_row,
         win._sys_uptime_row,
@@ -552,6 +562,14 @@ def update(win: Any, metrics: dict[str, Any]) -> None:
                     grade=report["grade"],
                 )
             )
+    history_row = getattr(win, "_alerts_history_row", None)
+    if history_row is not None:
+        history = alerts.format_history_entries(list(win._settings.get("alert_history") or []))
+        if history:
+            last = history[-1]
+            history_row.set_subtitle(f"{last['when']} · {last['body']}"[:160])
+        else:
+            history_row.set_subtitle(i18n.t("alerts_history_empty"))
     banner = getattr(win, "_dash_banner", None)
     if banner is not None:
         if messages:
