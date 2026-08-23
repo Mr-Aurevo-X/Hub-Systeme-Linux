@@ -1,13 +1,36 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 from __future__ import annotations
 
+import io
 import os
 import stat
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import pytest
 
 from core import plugins, updater
+
+
+def _release_item(version: str) -> dict:
+    return {
+        "tag_name": f"v{version}",
+        "name": f"v{version}",
+        "draft": False,
+        "prerelease": False,
+        "html_url": f"https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/tag/v{version}",
+        "body": "notes",
+        "assets": [
+            {
+                "name": "org.mraurevox.HubSysteme.flatpak",
+                "browser_download_url": (
+                    "https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/"
+                    f"v{version}/org.mraurevox.HubSysteme.flatpak"
+                ),
+            }
+        ],
+    }
 
 
 def test_update_channel_is_flatpak_only() -> None:
@@ -131,3 +154,73 @@ def test_plugin_rejects_world_writable(tmp_path: Path, monkeypatch: pytest.Monke
     bad.chmod(0o707)
     with pytest.raises(plugins.PluginError):
         plugins._safe_plugin_path("open.sh")
+
+
+def test_releases_latest_api_is_allowed() -> None:
+    latest = updater.FLATPAK_RELEASES_LATEST_API
+    assert latest.endswith("/releases/latest")
+    assert updater._require_allowed_url(latest, kind="api") == latest
+    compact = updater.FLATPAK_RELEASES_LIST_API
+    assert "per_page=" in compact
+    assert updater._require_allowed_url(compact, kind="api") == compact
+
+
+def test_check_for_update_uses_latest_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(updater, "local_version", lambda: "1.1.2")
+    calls: list[str] = []
+
+    def fake_http(url: str, timeout: float = 15.0) -> object:
+        calls.append(url)
+        return _release_item("1.1.3")
+
+    monkeypatch.setattr(updater, "_http_json", fake_http)
+    found = updater.check_for_update()
+    assert found is not None
+    assert found["version"] == "1.1.3"
+    assert calls[0] == updater.FLATPAK_RELEASES_LATEST_API
+
+
+def test_check_for_update_falls_back_after_latest_504(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(updater, "local_version", lambda: "1.1.2")
+    calls: list[str] = []
+
+    def fake_http(url: str, timeout: float = 15.0) -> object:
+        calls.append(url)
+        if url.endswith("/latest"):
+            raise urllib.error.HTTPError(url, 504, "Gateway Time-out", hdrs=None, fp=io.BytesIO())
+        return [_release_item("1.1.3")]
+
+    monkeypatch.setattr(updater, "_http_json", fake_http)
+    found = updater.check_for_update()
+    assert found is not None
+    assert found["version"] == "1.1.3"
+    assert calls[0] == updater.FLATPAK_RELEASES_LATEST_API
+    assert updater.FLATPAK_RELEASES_LIST_API in calls
+
+
+def test_http_json_retries_gateway_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    class FakeResp:
+        def read(self, _n: int) -> bytes:
+            return b'{"ok":true}'
+
+        def __enter__(self) -> FakeResp:
+            return self
+
+        def __exit__(self, *_a: object) -> bool:
+            return False
+
+    attempts = {"n": 0}
+
+    class FakeOpener:
+        def open(self, req: urllib.request.Request, timeout: float = 15.0) -> FakeResp:
+            attempts["n"] += 1
+            if attempts["n"] < 3:
+                raise urllib.error.HTTPError(
+                    req.full_url, 504, "Gateway Time-out", hdrs=None, fp=io.BytesIO()
+                )
+            return FakeResp()
+
+    monkeypatch.setattr(updater, "_opener", lambda: FakeOpener())
+    monkeypatch.setattr(updater.time, "sleep", lambda _s: None)
+    assert updater._http_json(updater.FLATPAK_RELEASES_LATEST_API) == {"ok": True}
+    assert attempts["n"] == 3
