@@ -94,13 +94,16 @@ class MainWindow(Adw.ApplicationWindow):
         self._monitor_thread: threading.Thread | None = None
         self._current_page = app_settings.coerce_page(self._settings.get("last_page"))
         self._process_filter = ""
+        self._process_sort = "cpu"
+        self._process_empty_row: Gtk.Widget | None = None
         self._service_filter = ""
-        self._service_chip = "active"  # active | enabled | all
+        self._service_chip = "active"  # active | enabled | failed | all
         self._package_filter = ""
         self._package_manager = "all"  # all | apt | flatpak | snap
         self._logs_priority = "all"
         self._logs_grep = ""
         self._logs_text_cache = ""
+        self._logs_preset_guard = False
         self._network_chip = "wifi"
         self._connection_items: list[dict[str, Any]] = []
         self._busy_ops = 0
@@ -590,6 +593,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._built_pages.clear()
         self._privileged_buttons.clear()
         self._process_rows.clear()
+        self._process_empty_row = None
         self._disk_rows.clear()
         self._iface_rows.clear()
         self._sensor_rows.clear()
@@ -727,6 +731,17 @@ class MainWindow(Adw.ApplicationWindow):
         bar.append(refresh_btn)
         root.append(bar)
 
+        chips, self._process_sort_buttons = make_filter_chips(
+            (
+                ("cpu", i18n.t("sort_cpu")),
+                ("ram", i18n.t("sort_ram")),
+                ("name", i18n.t("sort_name")),
+            ),
+            active_key=self._process_sort,
+            on_change=self._set_process_sort,
+        )
+        root.append(chips)
+
         self._process_scrolled = Gtk.ScrolledWindow()
         self._process_scrolled.set_vexpand(True)
         self._process_list = Gtk.ListBox()
@@ -740,6 +755,10 @@ class MainWindow(Adw.ApplicationWindow):
         clamp.set_child(self._process_scrolled)
         root.append(clamp)
         return root
+
+    def _set_process_sort(self, key: str) -> None:
+        self._process_sort = key
+        self._render_processes(self._process_data_cache)
 
     def _apply_process_filter(self) -> None:
         self._process_filter = self._process_search.get_text().strip().lower()
@@ -755,7 +774,7 @@ class MainWindow(Adw.ApplicationWindow):
         def done(result: Any, error: BaseException | None) -> None:
             self._process_spinner.set_visible(False)
             if error is not None:
-                show_toast(self._toast_overlay, f"Processus: {error}")
+                show_toast(self._toast_overlay, i18n.t("process_error", detail=str(error)))
                 return
             self._process_data_cache = list(result or [])
             self._render_processes(self._process_data_cache)
@@ -771,12 +790,26 @@ class MainWindow(Adw.ApplicationWindow):
             if needle and needle not in hay:
                 continue
             filtered.append(item)
+        filtered = process.sort_processes(filtered, self._process_sort)
+
+        if self._process_empty_row is not None:
+            self._process_list.remove(self._process_empty_row)
+            self._process_empty_row = None
 
         wanted_pids = {int(item["pid"]) for item in filtered}
         for pid in list(self._process_rows):
             if pid not in wanted_pids:
                 row = self._process_rows.pop(pid)
                 self._process_list.remove(row)
+
+        if not filtered:
+            empty = Adw.ActionRow()
+            empty.set_title(i18n.t("process_empty"))
+            empty.set_activatable(False)
+            self._process_empty_row = empty
+            self._process_list.append(empty)
+            GLib.idle_add(lambda: restore() or False)
+            return
 
         for item in filtered:
             pid = int(item["pid"])
@@ -790,14 +823,14 @@ class MainWindow(Adw.ApplicationWindow):
                 row = ActionListRow(
                     title,
                     subtitle,
-                    button_label="Terminer",
+                    button_label=i18n.t("process_terminate"),
                     on_clicked=lambda p=pid: self._confirm_kill(p),
                 )
                 row.set_activatable(True)
                 row.connect("activated", lambda *_a, p=pid: self._show_process_detail(p))
                 details_btn = Gtk.Button.new_from_icon_name("dialog-information-symbolic")
                 details_btn.set_valign(Gtk.Align.CENTER)
-                details_btn.set_tooltip_text("Détails")
+                details_btn.set_tooltip_text(i18n.t("process_details"))
                 details_btn.connect("clicked", lambda *_a, p=pid: self._show_process_detail(p))
                 row.add_suffix(details_btn)
                 self._process_rows[pid] = row
@@ -825,25 +858,27 @@ class MainWindow(Adw.ApplicationWindow):
         parent = info.get("parent")
         children = info.get("children") or []
         parent_txt = (
-            f"{parent.get('name')} (PID {parent.get('pid')})" if parent else "aucun"
+            f"{parent.get('name')} (PID {parent.get('pid')})"
+            if parent
+            else i18n.t("process_none")
         )
         children_txt = (
             ", ".join(f"{c.get('name')} ({c.get('pid')})" for c in children[:12])
             if children
-            else "aucun"
+            else i18n.t("process_none")
         )
         if len(children) > 12:
             children_txt += f" … (+{len(children) - 12})"
 
         body = (
-            f"Commande: {info.get('cmdline')}\n"
-            f"CWD: {info.get('cwd')}\n"
-            f"Utilisateur: {info.get('user')} · État: {info.get('status')}\n"
-            f"Nice: {info.get('nice')} · Threads: {info.get('num_threads')}\n"
-            f"Fichiers ouverts: {info.get('open_files')}\n"
-            f"CPU: {info.get('cpu')}% · RAM: {info.get('ram_mib')} Mio\n"
-            f"Parent: {parent_txt}\n"
-            f"Enfants: {children_txt}"
+            f"{i18n.t('process_cmd', value=info.get('cmdline'))}\n"
+            f"{i18n.t('process_cwd', value=info.get('cwd'))}\n"
+            f"{i18n.t('process_user_state', user=info.get('user'), status=info.get('status'))}\n"
+            f"{i18n.t('process_nice_threads', nice=info.get('nice'), threads=info.get('num_threads'))}\n"
+            f"{i18n.t('process_open_files', value=info.get('open_files'))}\n"
+            f"{i18n.t('process_cpu_ram', cpu=info.get('cpu'), ram=info.get('ram_mib'))}\n"
+            f"{i18n.t('process_parent', value=parent_txt)}\n"
+            f"{i18n.t('process_children', value=children_txt)}"
         )
         extra = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         extra.set_halign(Gtk.Align.CENTER)
@@ -856,7 +891,7 @@ class MainWindow(Adw.ApplicationWindow):
             page_increment=5,
         )
         nice_spin = Gtk.SpinButton(adjustment=adj, climb_rate=1, digits=0)
-        apply_nice = Gtk.Button(label="Appliquer nice")
+        apply_nice = Gtk.Button(label=i18n.t("process_apply_nice"))
         apply_nice.add_css_class("suggested-action")
 
         def on_renice(*_a: object) -> None:
@@ -871,7 +906,10 @@ class MainWindow(Adw.ApplicationWindow):
                 if error is not None:
                     show_toast(self._toast_overlay, str(error))
                     return
-                show_toast(self._toast_overlay, f"Nice {value} appliqué au PID {pid}")
+                show_toast(
+                    self._toast_overlay,
+                    i18n.t("process_nice_applied", value=value, pid=pid),
+                )
                 dialog.close()
                 self._refresh_processes()
 
@@ -888,7 +926,7 @@ class MainWindow(Adw.ApplicationWindow):
             extra_child=extra,
         )
 
-        dialog.add_response("close", "Fermer")
+        dialog.add_response("close", i18n.t("process_close"))
         dialog.add_response("term", "SIGTERM")
         dialog.add_response("kill", "SIGKILL")
         dialog.set_response_appearance("term", response_appearance("SUGGESTED"))
@@ -908,9 +946,9 @@ class MainWindow(Adw.ApplicationWindow):
     def _confirm_kill(self, pid: int) -> None:
         confirm_dialog(
             self,
-            "Terminer le processus ?",
-            f"Envoyer SIGTERM au PID {pid} ?",
-            confirm_label="Terminer",
+            i18n.t("process_confirm_title"),
+            i18n.t("process_confirm_body", pid=pid),
+            confirm_label=i18n.t("process_terminate"),
             on_confirm=lambda: self._do_kill(pid, signal.SIGTERM),
         )
 
@@ -925,7 +963,7 @@ class MainWindow(Adw.ApplicationWindow):
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            show_toast(self._toast_overlay, f"Signal envoyé au PID {pid}")
+            show_toast(self._toast_overlay, i18n.t("process_signal_sent", pid=pid))
             self._refresh_processes()
 
         run_in_thread(work, done)
@@ -954,6 +992,7 @@ class MainWindow(Adw.ApplicationWindow):
             (
                 ("active", i18n.t("svc_active")),
                 ("enabled", i18n.t("svc_enabled")),
+                ("failed", i18n.t("svc_failed")),
                 ("all", i18n.t("svc_all")),
             ),
             active_key=self._service_chip,
@@ -993,7 +1032,7 @@ class MainWindow(Adw.ApplicationWindow):
         def done(result: Any, error: BaseException | None) -> None:
             self._service_spinner.set_visible(False)
             if error is not None:
-                show_toast(self._toast_overlay, f"Services: {error}")
+                show_toast(self._toast_overlay, i18n.t("svc_error", detail=str(error)))
                 return
             self._service_data_cache = list(result or [])
             self._render_services(self._service_data_cache)
@@ -1003,19 +1042,24 @@ class MainWindow(Adw.ApplicationWindow):
     def _render_services(self, items: list[dict[str, Any]]) -> None:
         _, restore = self._preserve_scroll(self._service_scrolled)
         self._clear_listbox(self._service_list)
-        needle = self._service_filter
-        chip = self._service_chip
-        for item in items:
-            if chip == "active" and not item.get("is_active"):
-                continue
-            if chip == "enabled" and not item.get("is_enabled"):
-                continue
-            hay = f"{item['name']} {item.get('description', '')}".lower()
-            if needle and needle not in hay:
-                continue
-            state = "actif" if item.get("is_active") else "inactif"
+        visible = services.filter_services(
+            items, chip=self._service_chip, needle=self._service_filter
+        )
+        if not visible:
+            empty = Adw.ActionRow()
+            empty.set_title(i18n.t("svc_empty"))
+            empty.set_activatable(False)
+            self._service_list.append(empty)
+            GLib.idle_add(lambda: restore() or False)
+            return
+        for item in visible:
+            state = (
+                i18n.t("svc_state_active")
+                if item.get("is_active")
+                else i18n.t("svc_state_inactive")
+            )
             enabled = item.get("enabled", "unknown")
-            desc = (item.get("description") or "").strip() or "Sans description"
+            desc = (item.get("description") or "").strip() or i18n.t("svc_no_description")
             title = item["short_name"]
             subtitle = f"{desc}\n{state} · {item.get('sub', '')} · {enabled}"
             row = Adw.ActionRow()
@@ -1023,25 +1067,27 @@ class MainWindow(Adw.ApplicationWindow):
             row.set_subtitle(subtitle)
 
             unit = item["name"]
-            restart_btn = Gtk.Button(label="Restart")
+            restart_btn = Gtk.Button(label=i18n.t("svc_restart"))
             restart_btn.set_valign(Gtk.Align.CENTER)
             restart_btn.set_sensitive(self._busy_ops == 0)
             restart_btn.connect("clicked", lambda *_a, u=unit: self._service_action(u, "restart"))
             row.add_suffix(restart_btn)
 
             if item.get("is_active"):
-                btn = Gtk.Button(label="Stop")
+                btn = Gtk.Button(label=i18n.t("svc_stop"))
                 btn.add_css_class("destructive-action")
                 btn.connect("clicked", lambda *_a, u=unit: self._service_action(u, "stop"))
             else:
-                btn = Gtk.Button(label="Start")
+                btn = Gtk.Button(label=i18n.t("svc_start"))
                 btn.add_css_class("suggested-action")
                 btn.connect("clicked", lambda *_a, u=unit: self._service_action(u, "start"))
             btn.set_valign(Gtk.Align.CENTER)
             btn.set_sensitive(self._busy_ops == 0)
             row.add_suffix(btn)
 
-            en_btn = Gtk.Button(label="Disable" if item.get("is_enabled") else "Enable")
+            en_btn = Gtk.Button(
+                label=i18n.t("disable") if item.get("is_enabled") else i18n.t("enable")
+            )
             en_btn.set_valign(Gtk.Align.CENTER)
             en_btn.set_sensitive(self._busy_ops == 0)
             action = "disable" if item.get("is_enabled") else "enable"
@@ -1051,19 +1097,34 @@ class MainWindow(Adw.ApplicationWindow):
 
         GLib.idle_add(lambda: restore() or False)
 
+    def _service_action_label(self, action: str) -> str:
+        keys = {
+            "restart": "svc_restart",
+            "stop": "svc_stop",
+            "start": "svc_start",
+            "enable": "enable",
+            "disable": "disable",
+        }
+        return i18n.t(keys.get(action, action))
+
     def _service_action(self, unit: str, action: str) -> None:
+        label = self._service_action_label(action)
         confirm_dialog(
             self,
-            f"{action.capitalize()} le service ?",
-            f"Exécuter: pkexec systemctl {action} {unit}",
-            confirm_label=action.capitalize(),
+            i18n.t("svc_confirm_title", action=label),
+            i18n.t("svc_confirm_body", action=action, unit=unit),
+            confirm_label=label,
             destructive=action in {"stop", "disable"},
             on_confirm=lambda: self._do_service_action(unit, action),
         )
 
     def _do_service_action(self, unit: str, action: str) -> None:
         self._set_busy(True)
-        show_toast(self._toast_overlay, f"{action} en cours…", timeout=2)
+        show_toast(
+            self._toast_overlay,
+            i18n.t("svc_running", action=self._service_action_label(action)),
+            timeout=2,
+        )
 
         def work() -> dict[str, Any]:
             return services.toggle_service(unit, action)
@@ -1073,7 +1134,10 @@ class MainWindow(Adw.ApplicationWindow):
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            show_toast(self._toast_overlay, f"{action} OK — {unit}")
+            show_toast(
+                self._toast_overlay,
+                i18n.t("svc_done", action=self._service_action_label(action), unit=unit),
+            )
             self._refresh_services()
 
         run_in_thread(work, done)
@@ -1272,8 +1336,10 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _refresh_packages(self, *, show_spinner: bool = False) -> None:
         avail = packages.available_managers()
-        present = ", ".join(name for name, ok in avail.items() if ok) or "aucun"
-        self._managers_label.set_text(f"Gestionnaires détectés: {present}")
+        present = ", ".join(name for name, ok in avail.items() if ok) or i18n.t(
+            "pkg_managers_none"
+        )
+        self._managers_label.set_text(i18n.t("pkg_managers_detected", managers=present))
         if show_spinner:
             self._package_spinner.set_visible(True)
 
@@ -1283,7 +1349,7 @@ class MainWindow(Adw.ApplicationWindow):
         def done(result: Any, error: BaseException | None) -> None:
             self._package_spinner.set_visible(False)
             if error is not None:
-                show_toast(self._toast_overlay, f"Paquets: {error}")
+                show_toast(self._toast_overlay, i18n.t("pkg_error", detail=str(error)))
                 return
             self._package_data_cache = list(result or [])
             self._render_packages(self._package_data_cache)
@@ -1527,19 +1593,38 @@ class MainWindow(Adw.ApplicationWindow):
         chips.set_margin_end(12)
         chips.set_margin_bottom(4)
         self._logs_chip_buttons: dict[str, Gtk.ToggleButton] = {}
-        for key, label in (
-            ("err", "Erreurs"),
-            ("warning", "Warnings"),
-            ("info", "Info"),
-            ("all", "Tous"),
+        for key, label_key in (
+            ("err", "logs_err"),
+            ("warning", "logs_warning"),
+            ("info", "logs_info"),
+            ("all", "logs_all"),
         ):
-            btn = Gtk.ToggleButton(label=label)
+            btn = Gtk.ToggleButton(label=i18n.t(label_key))
             btn.add_css_class("filter-chip")
             btn.set_active(key == self._logs_priority)
             btn.connect("toggled", lambda b, k=key: self._on_logs_chip(k, b))
             self._logs_chip_buttons[key] = btn
             chips.append(btn)
         root.append(chips)
+
+        preset_bar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        preset_bar.set_margin_start(12)
+        preset_bar.set_margin_end(12)
+        preset_bar.set_margin_bottom(8)
+        save_preset = Gtk.Button(label=i18n.t("logs_preset_save"))
+        save_preset.connect("clicked", lambda *_: self._save_log_preset())
+        self._logs_preset_drop = Gtk.DropDown()
+        self._logs_preset_drop.set_hexpand(True)
+        self._logs_preset_drop.connect(
+            "notify::selected", lambda *_a: self._on_log_preset_selected()
+        )
+        delete_preset = Gtk.Button(label=i18n.t("logs_preset_delete"))
+        delete_preset.connect("clicked", lambda *_: self._delete_selected_log_preset())
+        preset_bar.append(save_preset)
+        preset_bar.append(self._logs_preset_drop)
+        preset_bar.append(delete_preset)
+        root.append(preset_bar)
+        self._fill_log_presets()
 
         self._logs_status = Gtk.Label(label="—", xalign=0)
         self._logs_status.add_css_class("dim-label")
@@ -1577,13 +1662,106 @@ class MainWindow(Adw.ApplicationWindow):
         self._logs_grep = self._logs_search.get_text().strip()
         self._refresh_logs(show_spinner=True)
 
+    def _log_preset_names(self) -> list[str]:
+        names: list[str] = []
+        for item in self._settings.get("log_filter_presets") or []:
+            if isinstance(item, dict) and item.get("name"):
+                names.append(str(item["name"]))
+        return names
+
+    def _fill_log_presets(self, *, select: str | None = None) -> None:
+        names = self._log_preset_names()
+        model = Gtk.StringList.new(["—"] + names)
+        self._logs_preset_guard = True
+        self._logs_preset_drop.set_model(model)
+        index = 0
+        if select:
+            try:
+                index = names.index(select) + 1
+            except ValueError:
+                index = 0
+        self._logs_preset_drop.set_selected(index)
+        self._logs_preset_guard = False
+
+    def _set_logs_chip(self, key: str) -> None:
+        self._logs_priority = key
+        for chip_key, btn in self._logs_chip_buttons.items():
+            btn.set_active(chip_key == key)
+
+    def _save_log_preset(self) -> None:
+        entry = Gtk.Entry()
+        set_placeholder_text(entry, i18n.t("logs_preset_name"))
+        dialog = make_message_dialog(
+            self,
+            i18n.t("logs_preset_save"),
+            i18n.t("logs_preset_name"),
+            extra_child=entry,
+        )
+        dialog.add_response("cancel", i18n.t("cancel"))
+        dialog.add_response("save", i18n.t("save"))
+        dialog.set_default_response("save")
+
+        def on_response(_d: object, response: str) -> None:
+            if response != "save":
+                return
+            try:
+                added = app_settings.add_log_preset(
+                    self._settings,
+                    entry.get_text(),
+                    self._logs_priority,
+                    self._logs_grep,
+                )
+            except app_settings.LogPresetError as exc:
+                key = (
+                    "logs_preset_full"
+                    if "10" in str(exc)
+                    else "logs_preset_invalid"
+                )
+                show_toast(self._toast_overlay, i18n.t(key))
+                return
+            app_settings.save_settings(self._settings)
+            self._settings = app_settings.load_settings()
+            self._fill_log_presets(select=added["name"])
+            show_toast(self._toast_overlay, i18n.t("logs_preset_saved"))
+
+        dialog.connect("response", on_response)
+        dialog.present(self)
+
+    def _on_log_preset_selected(self) -> None:
+        if self._logs_preset_guard:
+            return
+        selected = int(self._logs_preset_drop.get_selected())
+        if selected <= 0:
+            return
+        names = self._log_preset_names()
+        if selected > len(names):
+            return
+        preset = app_settings.lookup_log_preset(self._settings, names[selected - 1])
+        if preset is None:
+            return
+        self._logs_grep = preset["grep"]
+        self._logs_search.set_text(preset["grep"])
+        self._set_logs_chip(preset["priority"])
+        self._refresh_logs(show_spinner=True)
+
+    def _delete_selected_log_preset(self) -> None:
+        selected = int(self._logs_preset_drop.get_selected())
+        names = self._log_preset_names()
+        if selected <= 0 or selected > len(names):
+            return
+        if not app_settings.remove_log_preset(self._settings, names[selected - 1]):
+            return
+        app_settings.save_settings(self._settings)
+        self._settings = app_settings.load_settings()
+        self._fill_log_presets()
+
     def _refresh_logs(self, *, show_spinner: bool = False, privileged: bool = False) -> None:
         if show_spinner:
             self._logs_spinner.set_visible(True)
         if privileged:
             show_toast(
                 self._toast_overlay,
-                "Lecture du journal système (demande de mot de passe admin)…",
+                i18n.t("logs_reading_admin"),
                 timeout=4,
             )
         priority = self._logs_priority
@@ -1598,24 +1776,26 @@ class MainWindow(Adw.ApplicationWindow):
             self._logs_spinner.set_visible(False)
             buf = self._logs_view.get_buffer()
             if error is not None:
-                show_toast(self._toast_overlay, f"Journaux: {error}")
+                show_toast(self._toast_overlay, i18n.t("logs_error", detail=str(error)))
                 buf.set_text(str(error))
-                self._logs_status.set_text("Erreur de lecture")
+                self._logs_status.set_text(i18n.t("logs_status_error"))
                 return
             text = result.get("text", "") if isinstance(result, dict) else ""
             message = str(result.get("message") or "").strip() if isinstance(result, dict) else ""
             if not text.strip() and message:
                 text = message + "\n"
+            if not text.strip():
+                text = i18n.t("logs_empty")
             self._logs_text_cache = text
             buf.set_text(text)
             count = result.get("line_count", 0) if isinstance(result, dict) else 0
             source = str(result.get("source") or "").strip() if isinstance(result, dict) else ""
-            status_bits = [f"{count} lignes", priority]
+            status_bits = [i18n.t("logs_status_lines", count=count), priority]
             if source:
                 status_bits.append(source)
             if message:
                 status_bits.append(message)
-            status_bits.append(f"actualisé {time.strftime('%H:%M:%S')}")
+            status_bits.append(i18n.t("logs_status_refreshed", time=time.strftime("%H:%M:%S")))
             self._logs_status.set_text(" · ".join(status_bits))
             end = buf.get_end_iter()
             self._logs_view.scroll_to_iter(end, 0.0, False, 0.0, 0.0)
@@ -1624,8 +1804,8 @@ class MainWindow(Adw.ApplicationWindow):
 
     def _export_logs(self) -> None:
         text = self._logs_text_cache
-        if not text.strip():
-            show_toast(self._toast_overlay, "Aucun journal à exporter")
+        if not text.strip() or text.strip() == i18n.t("logs_empty"):
+            show_toast(self._toast_overlay, i18n.t("logs_none_export"))
             return
         stamp = time.strftime("%Y%m%d-%H%M%S")
         default = Path.home() / "Documents" / f"hub-systeme-journal-{stamp}.txt"
@@ -1637,7 +1817,7 @@ class MainWindow(Adw.ApplicationWindow):
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            show_toast(self._toast_overlay, f"Exporté: {result}")
+            show_toast(self._toast_overlay, i18n.t("logs_exported", path=result))
 
         run_in_thread(work, done)
 
@@ -2769,24 +2949,24 @@ class MainWindow(Adw.ApplicationWindow):
             self,
             i18n.t("create_snapshot"),
             i18n.t("snapshots_desc"),
-            confirm_label="Créer",
+            confirm_label=i18n.t("create"),
             destructive=False,
             on_confirm=self._do_create_snapshot,
         )
 
     def _do_create_snapshot(self) -> None:
         self._set_busy(True)
-        show_toast(self._toast_overlay, "Création du cliché en cours…", timeout=5)
+        show_toast(self._toast_overlay, i18n.t("snapshot_creating"), timeout=5)
 
         def work() -> dict[str, Any]:
-            return backup.create_snapshot("Gest_Linux_Pro")
+            return backup.create_snapshot(i18n.t("snapshot_comment"))
 
         def done(_result: Any, error: BaseException | None) -> None:
             self._set_busy(False)
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            show_toast(self._toast_overlay, "Cliché créé avec succès")
+            show_toast(self._toast_overlay, i18n.t("snapshot_created"))
             self._refresh_backup(privileged=True)
 
         run_in_thread(work, done)

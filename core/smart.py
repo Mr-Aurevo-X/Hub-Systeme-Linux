@@ -63,6 +63,17 @@ def list_block_devices() -> list[str]:
     return out
 
 
+def status_summary(items: list[dict[str, Any]]) -> dict[str, str]:
+    """Return dashboard kind (ok/bad/empty) plus a short bad-disk line."""
+    if not items:
+        return {"kind": "empty", "text": ""}
+    bad = [item for item in items if not item.get("ok")]
+    if not bad:
+        return {"kind": "ok", "text": ""}
+    text = ", ".join(f"{item.get('device')}: {item.get('health')}" for item in bad[:3])
+    return {"kind": "bad", "text": text}
+
+
 def summarize() -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for dev in list_block_devices()[:6]:

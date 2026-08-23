@@ -30,6 +30,24 @@ class ProcessError(Exception):
         self.pid = pid
 
 
+def sort_processes(items: list[dict[str, Any]], key: str) -> list[dict[str, Any]]:
+    """Sort a process cache. ``key`` is cpu (default), ram, or name."""
+    rows = list(items)
+    if key == "ram":
+        rows.sort(
+            key=lambda item: (float(item.get("ram_mib") or 0), float(item.get("cpu") or 0)),
+            reverse=True,
+        )
+    elif key == "name":
+        rows.sort(key=lambda item: str(item.get("name") or "").lower())
+    else:
+        rows.sort(
+            key=lambda item: (float(item.get("cpu") or 0), float(item.get("ram_mib") or 0)),
+            reverse=True,
+        )
+    return rows
+
+
 def list_processes(*, limit: int | None = None) -> list[dict[str, Any]]:
     """Return processes sorted by CPU then RAM (descending)."""
     if host.is_flatpak():

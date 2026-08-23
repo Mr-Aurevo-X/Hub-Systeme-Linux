@@ -17,6 +17,15 @@ _SNAP_NAME_RE = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}$")
 _MISSING_TIMESHIFT = (
     "Timeshift n'est pas installé sur l'hôte (sudo apt install timeshift)."
 )
+SNAPSHOT_COMMENT_DEFAULT = "Hub Système"
+_TIMESHIFT_DELETE_UNSUPPORTED = (
+    "Suppression Timeshift non supportée depuis Hub Système (utilisez Timeshift)."
+)
+
+
+def sanitize_snapshot_comment(comments: str | None) -> str:
+    comment = (comments or SNAPSHOT_COMMENT_DEFAULT).strip()[:200]
+    return re.sub(r"[^\w\s\-.:@/]+", "", comment) or SNAPSHOT_COMMENT_DEFAULT
 
 
 class BackupError(Exception):
@@ -220,8 +229,7 @@ def create_snapshot(
     if shutil.which("pkexec") is None:
         raise BackupError("pkexec introuvable (installez policykit)")
 
-    comment = (comments or "Gest_Linux_Pro").strip()[:200]
-    comment = re.sub(r"[^\w\s\-.:@/]+", "", comment) or "Gest_Linux_Pro"
+    comment = sanitize_snapshot_comment(comments)
 
     cmd = ["pkexec", "timeshift", "--create", "--comments", comment]
     try:
@@ -297,7 +305,7 @@ def delete_snapshot(
             return snapper_mod.delete_snapshot(config, name)
         except snapper_mod.SnapperError as exc:
             raise BackupError(str(exc)) from exc
-    raise BackupError("Suppression Timeshift non supportée depuis Gest (utilisez Timeshift).")
+    raise BackupError(_TIMESHIFT_DELETE_UNSUPPORTED)
 
 
 def open_btrfs_assistant() -> None:

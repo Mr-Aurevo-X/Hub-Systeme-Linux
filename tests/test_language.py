@@ -80,6 +80,77 @@ def test_threshold_profile_labels_bilingual() -> None:
         i18n.set_language(previous)
 
 
+_PASS1_KEYS = (
+    "dash_smart_ok",
+    "dash_smart_none",
+    "dash_smart_unavailable",
+    "process_terminate",
+    "process_details",
+    "process_empty",
+    "process_error",
+    "svc_restart",
+    "svc_stop",
+    "svc_start",
+    "svc_state_active",
+    "svc_state_inactive",
+    "svc_no_description",
+    "svc_empty",
+    "svc_error",
+    "logs_err",
+    "logs_warning",
+    "logs_info",
+    "logs_all",
+    "logs_empty",
+    "logs_error",
+    "logs_status_lines",
+    "logs_status_refreshed",
+    "logs_status_error",
+    "pkg_managers_detected",
+    "pkg_managers_none",
+    "snapshot_comment",
+    "svc_failed",
+    "sort_cpu",
+    "sort_ram",
+    "sort_name",
+    "dash_smart_dialog_title",
+    "logs_preset_save",
+    "logs_preset_name",
+    "logs_preset_delete",
+    "logs_preset_saved",
+)
+
+
+def test_pkg_user_strings_have_no_gest() -> None:
+    previous = i18n.get_language()
+    try:
+        for lang in ("fr", "en"):
+            i18n.set_language(lang)
+            for key in (
+                "pkg_terminal_opening",
+                "pkg_console_opening",
+                "pkg_apply_body",
+            ):
+                text = i18n.t(key, managers="pacman")
+                assert "Gest" not in text, f"{lang}:{key} still mentions Gest"
+                assert "Hub Système" in text or "Hub Systeme" in text or "Hub" in text
+    finally:
+        i18n.set_language(previous)
+
+
+def test_pass1_keys_present_fr_en() -> None:
+    previous = i18n.get_language()
+    try:
+        for key in _PASS1_KEYS:
+            i18n.set_language("fr")
+            fr = i18n.t(key)
+            i18n.set_language("en")
+            en = i18n.t(key)
+            assert fr != key, f"missing fr key {key}"
+            assert en != key, f"missing en key {key}"
+    finally:
+        i18n.set_language(previous)
+
+
 def test_welcome_keys_bilingual() -> None:
     previous = i18n.get_language()
     try:

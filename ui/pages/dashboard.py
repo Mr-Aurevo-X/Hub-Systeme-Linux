@@ -16,6 +16,7 @@ from gi.repository import Adw, Gtk  # noqa: E402
 from core import health, i18n, link_status, monitoring, process, settings as app_settings
 from core import backup as backup_mod
 from core import smart as smart_mod
+from ui.adw_compat import make_message_dialog
 from ui.components import CircularGauge, CoreBars, MetricRow, Sparkline, run_in_thread
 
 
@@ -130,6 +131,9 @@ def build(win: Any) -> Gtk.Widget:
     win._backup_reminder_row.set_activatable(True)
     win._backup_reminder_row.connect("activated", lambda *_: win._goto_page("backup"))
     win._smart_row = Adw.ActionRow(title=i18n.t("dash_smart"), subtitle="—")
+    win._smart_row.set_activatable(True)
+    win._smart_row.connect("activated", lambda *_: present_smart_dialog(win))
+    win._smart_items = []
     for row in (
         win._health_row,
         win._sys_host_row,
@@ -479,20 +483,23 @@ def update(win: Any, metrics: dict[str, Any]) -> None:
         if smart_mod.is_available():
             try:
                 items = smart_mod.summarize()
-                bad = [i for i in items if not i.get("ok")]
-                if bad:
-                    win._smart_row.set_subtitle(
-                        ", ".join(f"{b.get('device')}: {b.get('health')}" for b in bad[:3])
-                    )
-                elif items:
-                    win._smart_row.set_subtitle("OK")
+                win._smart_items = list(items)
+                summary = smart_mod.status_summary(items)
+                if summary["kind"] == "bad":
+                    win._smart_row.set_subtitle(summary["text"])
+                elif summary["kind"] == "ok":
+                    win._smart_row.set_subtitle(i18n.t("dash_smart_ok"))
                 else:
-                    win._smart_row.set_subtitle("—")
+                    win._smart_row.set_subtitle(i18n.t("dash_smart_none"))
                 win._smart_row.set_visible(True)
-            except Exception:
-                win._smart_row.set_visible(False)
+            except (OSError, RuntimeError, smart_mod.SmartError):
+                win._smart_items = []
+                win._smart_row.set_subtitle(i18n.t("dash_smart_error"))
+                win._smart_row.set_visible(True)
         else:
-            win._smart_row.set_visible(False)
+            win._smart_items = []
+            win._smart_row.set_subtitle(i18n.t("dash_smart_unavailable"))
+            win._smart_row.set_visible(True)
     elif not hasattr(win, "_smart_row"):
         pass
 
@@ -555,3 +562,30 @@ def update(win: Any, metrics: dict[str, Any]) -> None:
                 alert_row.set_visible(False)
 
     _refresh_top_procs(win)
+
+
+def present_smart_dialog(win: Any) -> None:
+    items = list(getattr(win, "_smart_items", None) or [])
+    if not items and smart_mod.is_available():
+        try:
+            items = smart_mod.summarize()
+            win._smart_items = list(items)
+        except (OSError, RuntimeError, smart_mod.SmartError):
+            items = []
+    if not items:
+        body = i18n.t("dash_smart_empty")
+    else:
+        lines: list[str] = []
+        for item in items:
+            device = str(item.get("device") or "?")
+            if item.get("ok"):
+                lines.append(f"{device} — {item.get('health')}")
+                continue
+            detail = item.get("error") or item.get("health") or i18n.t("dash_smart_error")
+            lines.append(f"{device} — {detail}")
+        body = "\n".join(lines)
+    dialog = make_message_dialog(win, i18n.t("dash_smart_dialog_title"), body)
+    dialog.add_response("close", i18n.t("update_close"))
+    dialog.set_default_response("close")
+    dialog.set_close_response("close")
+    dialog.present(win)

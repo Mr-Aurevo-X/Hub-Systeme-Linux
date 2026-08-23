@@ -30,6 +30,15 @@ DEFAULTS: dict[str, Any] = {
     "last_page": "dashboard",
 }
 
+LOG_PRESET_MAX = 10
+LOG_PRESET_NAME_MAX = 40
+LOG_PRESET_PRIORITIES = frozenset({"err", "warning", "info", "all"})
+
+
+class LogPresetError(Exception):
+    """Raised when a journal filter preset is rejected."""
+
+
 THRESHOLD_PROFILES: dict[str, dict[str, float]] = {
     "desktop": {
         "cpu_percent": 90.0,
@@ -50,6 +59,59 @@ THRESHOLD_PROFILES: dict[str, dict[str, float]] = {
         "disk_percent": 95.0,
     },
 }
+
+
+def _normalize_log_preset(name: str, priority: str, grep: str) -> dict[str, str]:
+    cleaned = str(name or "").strip()[:LOG_PRESET_NAME_MAX].strip()
+    if not cleaned:
+        raise LogPresetError("Nom de preset invalide")
+    pri = str(priority or "all").strip()
+    if pri not in LOG_PRESET_PRIORITIES:
+        pri = "all"
+    return {"name": cleaned, "priority": pri, "grep": str(grep or "")}
+
+
+def add_log_preset(
+    settings: dict[str, Any],
+    name: str,
+    priority: str,
+    grep: str,
+) -> dict[str, str]:
+    item = _normalize_log_preset(name, priority, grep)
+    presets = [
+        p
+        for p in list(settings.get("log_filter_presets") or [])
+        if isinstance(p, dict) and p.get("name") != item["name"]
+    ]
+    if len(presets) >= LOG_PRESET_MAX:
+        raise LogPresetError("Maximum 10 presets.")
+    presets.append(item)
+    settings["log_filter_presets"] = presets
+    return item
+
+
+def lookup_log_preset(settings: dict[str, Any], name: str) -> dict[str, str] | None:
+    cleaned = str(name or "").strip()
+    for item in settings.get("log_filter_presets") or []:
+        if isinstance(item, dict) and item.get("name") == cleaned:
+            return {
+                "name": str(item.get("name")),
+                "priority": str(item.get("priority") or "all"),
+                "grep": str(item.get("grep") or ""),
+            }
+    return None
+
+
+def remove_log_preset(settings: dict[str, Any], name: str) -> bool:
+    cleaned = str(name or "").strip()
+    presets = list(settings.get("log_filter_presets") or [])
+    kept = [
+        item
+        for item in presets
+        if not (isinstance(item, dict) and item.get("name") == cleaned)
+    ]
+    settings["log_filter_presets"] = kept
+    return len(kept) != len(presets)
 
 
 def apply_threshold_profile(settings: dict[str, Any], name: str) -> dict[str, Any]:

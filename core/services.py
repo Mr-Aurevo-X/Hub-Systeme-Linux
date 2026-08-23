@@ -59,6 +59,29 @@ def _parse_unit_files() -> dict[str, str]:
     return states
 
 
+def filter_services(
+    items: list[dict[str, Any]],
+    *,
+    chip: str,
+    needle: str,
+) -> list[dict[str, Any]]:
+    """Filter systemd rows by chip (active/enabled/failed/all) and text needle."""
+    out: list[dict[str, Any]] = []
+    query = (needle or "").strip().lower()
+    for item in items:
+        if chip == "active" and not item.get("is_active"):
+            continue
+        if chip == "enabled" and not item.get("is_enabled"):
+            continue
+        if chip == "failed" and item.get("active") != "failed":
+            continue
+        hay = f"{item.get('name', '')} {item.get('description', '')}".lower()
+        if query and query not in hay:
+            continue
+        out.append(item)
+    return out
+
+
 def list_services() -> list[dict[str, Any]]:
     """Return systemd services with active/inactive and enabled/disabled state."""
     if shutil.which("systemctl") is None:
