@@ -30,6 +30,36 @@ DEFAULTS: dict[str, Any] = {
     "last_page": "dashboard",
 }
 
+THRESHOLD_PROFILES: dict[str, dict[str, float]] = {
+    "desktop": {
+        "cpu_percent": 90.0,
+        "ram_percent": 90.0,
+        "temp_celsius": 85.0,
+        "disk_percent": 90.0,
+    },
+    "server": {
+        "cpu_percent": 80.0,
+        "ram_percent": 85.0,
+        "temp_celsius": 80.0,
+        "disk_percent": 80.0,
+    },
+    "vm": {
+        "cpu_percent": 95.0,
+        "ram_percent": 95.0,
+        "temp_celsius": 90.0,
+        "disk_percent": 95.0,
+    },
+}
+
+
+def apply_threshold_profile(settings: dict[str, Any], name: str) -> dict[str, Any]:
+    """Copy a named profile into ``settings["thresholds"]``. Unknown names are ignored."""
+    profile = THRESHOLD_PROFILES.get(name)
+    if profile is None:
+        return settings
+    settings["thresholds"] = dict(profile)
+    return settings
+
 
 def coerce_page(value: object) -> str:
     from ui.pages import PAGE_KEYS

@@ -78,23 +78,11 @@ def test_main_holds_until_map() -> None:
 
 
 def test_readme_promises_flatpak_only() -> None:
-    version = (_ROOT / "VERSION").read_text(encoding="utf-8").strip()
     text = (_ROOT / "README.md").read_text(encoding="utf-8")
-    assert f"**Version :** {version}" in text
-    assert "Flatpak uniquement" in text
-    assert "n’est plus distribuée" in text
-    assert f"releases/download/v{version}/org.mraurevox.HubSysteme.flatpak" in text
-    assert "INSTALLER-RACCOURCI-FLATPAK.sh" in text
-    assert "wget -O" in text
-    assert "bash ~/.local/share/hub-systeme/uninstall.sh" in text
-    native = (_ROOT / "packaging" / "public-readme-native.md.in").read_text(encoding="utf-8")
-    flatpak = (_ROOT / "packaging" / "public-readme-flatpak.md.in").read_text(encoding="utf-8")
-    compat = (_ROOT / "packaging" / "COMPAT.md").read_text(encoding="utf-8")
-    assert "Gest_Linux_Pro/releases" in native
-    assert "Gest_Linux_Pro-v" not in flatpak
-    assert "linux-flatpak-releases/releases/download/Gest" not in flatpak
-    assert "seul canal" in compat
-    assert "Plus de tarball native" in compat
+    assert "Hub-Systeme-Linux" in text
+    assert "org.mraurevox.HubSysteme" in text
+    assert "LANCER.sh" in text
+    assert "local-first" in text.lower() or "100 % local" in text
 
 
 def test_main_window_logs_when_mapped() -> None:

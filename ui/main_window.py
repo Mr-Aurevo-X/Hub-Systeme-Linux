@@ -63,6 +63,7 @@ from ui.components import (
     run_in_thread,
     show_toast,
 )
+from ui.compat_attr import call_if_present
 from ui.page_helpers import make_filter_chips
 from ui.nav import NavSidebar, page_titles
 from ui.search import present as present_search
@@ -459,6 +460,35 @@ class MainWindow(Adw.ApplicationWindow):
         ram_row = _spin_row(i18n.t("ram_pct"), float(th.get("ram_percent", 90)))
         temp_row = _spin_row(i18n.t("temp_c"), float(th.get("temp_celsius", 85)), upper=120.0)
         disk_row = _spin_row(i18n.t("disk_pct"), float(th.get("disk_percent", 90)))
+
+        def _refresh_threshold_spins() -> None:
+            current = dict(self._settings.get("thresholds") or app_settings.DEFAULTS["thresholds"])
+            cpu_row.set_value(float(current.get("cpu_percent", 90)))
+            ram_row.set_value(float(current.get("ram_percent", 90)))
+            temp_row.set_value(float(current.get("temp_celsius", 85)))
+            disk_row.set_value(float(current.get("disk_percent", 90)))
+
+        def _apply_threshold_preset(name: str) -> None:
+            app_settings.apply_threshold_profile(self._settings, name)
+            app_settings.save_settings(self._settings)
+            self._settings = app_settings.load_settings()
+            _refresh_threshold_spins()
+
+        preset_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        preset_box.add_css_class("linked")
+        for key, label_key in (
+            ("desktop", "threshold_profile_desktop"),
+            ("server", "threshold_profile_server"),
+            ("vm", "threshold_profile_vm"),
+        ):
+            btn = Gtk.Button(label=i18n.t(label_key))
+            btn.add_css_class("flat")
+            btn.connect("clicked", lambda *_a, n=key: _apply_threshold_preset(n))
+            preset_box.append(btn)
+        if not call_if_present(thresholds, "set_header_suffix", preset_box):
+            header_row = Adw.ActionRow(title=i18n.t("threshold_profiles"))
+            header_row.add_suffix(preset_box)
+            thresholds.add(header_row)
         for row in (cpu_row, ram_row, temp_row, disk_row):
             thresholds.add(row)
         page.add(thresholds)

@@ -7,6 +7,7 @@ import pytest
 
 from core import i18n
 from core import settings as app_settings
+from core.paths import settings_path
 
 
 def test_normalize_and_coerce_language() -> None:
@@ -41,26 +42,40 @@ def test_language_prompt_first_run_and_legacy(tmp_path: Path, monkeypatch: pytes
     assert again["language"] == "en"
     assert again["language_chosen"] is True
     assert app_settings.needs_language_prompt(again) is False
-    legacy = tmp_path / "hub-systeme" / "settings.json"
-    legacy.write_text('{"language": "fr", "alerts_enabled": true}\n', encoding="utf-8")
+    path = settings_path()
+    path.write_text('{"language": "fr", "alerts_enabled": true}\n', encoding="utf-8")
     old = app_settings.load_settings()
     assert old["language_chosen"] is False
     assert app_settings.needs_language_prompt(old) is True
 
 
-def test_nav_includes_machine_and_fleet() -> None:
+def test_nav_includes_dashboard_machine_logs() -> None:
     previous = i18n.get_language()
     try:
         i18n.set_language("fr")
         keys = [item[0] for item in i18n.nav_items()]
         assert keys[:2] == ["dashboard", "machine"]
-        assert "fleet" in keys
+        assert "logs" in keys
         assert "timers" in keys
+        assert "fleet" not in keys
         assert i18n.t("machine") == "Fiche"
-        assert i18n.t("fleet") == "Parc"
         i18n.set_language("en")
         assert i18n.t("machine") == "Machine"
-        assert i18n.t("fleet") == "Fleet"
+    finally:
+        i18n.set_language(previous)
+
+
+def test_threshold_profile_labels_bilingual() -> None:
+    previous = i18n.get_language()
+    try:
+        i18n.set_language("fr")
+        assert i18n.t("threshold_profile_desktop") == "Bureau"
+        assert i18n.t("threshold_profile_server") == "Serveur"
+        assert i18n.t("threshold_profile_vm") == "VM"
+        i18n.set_language("en")
+        assert i18n.t("threshold_profile_desktop") == "Desktop"
+        assert i18n.t("threshold_profile_server") == "Server"
+        assert i18n.t("threshold_profile_vm") == "VM"
     finally:
         i18n.set_language(previous)
 

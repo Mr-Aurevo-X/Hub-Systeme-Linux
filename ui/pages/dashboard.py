@@ -13,7 +13,7 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gtk  # noqa: E402
 
-from core import health, i18n, monitoring, process, settings as app_settings
+from core import health, i18n, link_status, monitoring, process, settings as app_settings
 from core import backup as backup_mod
 from core import smart as smart_mod
 from ui.components import CircularGauge, CoreBars, MetricRow, Sparkline, run_in_thread
@@ -114,6 +114,10 @@ def build(win: Any) -> Gtk.Widget:
     hero = Adw.PreferencesGroup()
     hero.add_css_class("dashboard-hero")
     hero.set_title(i18n.t("dash_system"))
+    win._link_status_label = Gtk.Label(label=link_status.summary_line(), xalign=0)
+    win._link_status_label.add_css_class("dim-label")
+    win._link_status_label.set_wrap(True)
+    box.append(win._link_status_label)
     win._health_row = Adw.ActionRow(title=i18n.t("health_title"), subtitle="—")
     win._health_row.set_activatable(True)
     win._health_row.connect("activated", lambda *_: win._show_health_dialog())
@@ -339,6 +343,10 @@ def update(win: Any, metrics: dict[str, Any]) -> None:
     """Push metrics into dashboard widgets owned by ``win``."""
     if not hasattr(win, "_cpu_gauge"):
         return
+
+    link_label = getattr(win, "_link_status_label", None)
+    if link_label is not None:
+        link_label.set_text(link_status.summary_line())
 
     cpu = metrics.get("cpu", {})
     ram = metrics.get("ram", {})
