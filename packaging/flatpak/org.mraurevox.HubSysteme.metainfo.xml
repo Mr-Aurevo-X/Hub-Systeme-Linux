@@ -41,6 +41,16 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.0" date="2026-08-23">
+      <description>
+        <p>Cockpit : SMART, orphelins, journal live, kill-tree, historique d’alertes, i18n pages nav, Flatpak sur Hub-Systeme-Linux.</p>
+      </description>
+    </release>
+    <release version="1.0.0" date="2026-08-23">
+      <description>
+        <p>Première release Linux autonome (Hub Système).</p>
+      </description>
+    </release>
     <release version="2.5.1" date="2026-08-23">
       <description>
         <p>Correctif : plus de boucle pkexec Snapper sur le tableau de bord (rappel clichés sans admin).</p>
