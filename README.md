@@ -5,7 +5,7 @@
 
 Hub GTK 4 autonome — santé, processus, paquets, disques, journaux (ex-Gest). **Linux uniquement** — distinct du Hub Système Windows (PC Command).
 
-**1.1.1** — [releases](https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases) · GPL-3.0-or-later · © 2026 Mr-Aurevo-X
+**1.1.2** — [releases](https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases) · GPL-3.0-or-later · © 2026 Mr-Aurevo-X
 
 ---
 
@@ -16,11 +16,12 @@ Hub GTK 4 autonome — santé, processus, paquets, disques, journaux (ex-Gest). 
 Prérequis : [Flatpak](https://flatpak.org/setup/) + runtime GNOME 49 (installé automatiquement depuis Flathub au premier `flatpak install`).
 
 ```bash
-wget -O org.mraurevox.HubSysteme.flatpak \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.1/org.mraurevox.HubSysteme.flatpak
+rm -f org.mraurevox.HubSysteme.flatpak
+wget --no-continue -O org.mraurevox.HubSysteme.flatpak \
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.2/org.mraurevox.HubSysteme.flatpak
 flatpak install --user -y --reinstall ./org.mraurevox.HubSysteme.flatpak
-wget -O INSTALLER-RACCOURCI-FLATPAK.sh \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.1/INSTALLER-RACCOURCI-FLATPAK.sh
+wget --no-continue -O INSTALLER-RACCOURCI-FLATPAK.sh \
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.2/INSTALLER-RACCOURCI-FLATPAK.sh
 bash ./INSTALLER-RACCOURCI-FLATPAK.sh
 flatpak run org.mraurevox.HubSysteme
 ```
@@ -54,11 +55,12 @@ Standalone GTK 4 hub — health, processes, packages, disks, logs (ex-Gest). **L
 ### Install (Flatpak)
 
 ```bash
-wget -O org.mraurevox.HubSysteme.flatpak \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.1/org.mraurevox.HubSysteme.flatpak
+rm -f org.mraurevox.HubSysteme.flatpak
+wget --no-continue -O org.mraurevox.HubSysteme.flatpak \
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.2/org.mraurevox.HubSysteme.flatpak
 flatpak install --user -y --reinstall ./org.mraurevox.HubSysteme.flatpak
-wget -O INSTALLER-RACCOURCI-FLATPAK.sh \
-  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.1/INSTALLER-RACCOURCI-FLATPAK.sh
+wget --no-continue -O INSTALLER-RACCOURCI-FLATPAK.sh \
+  https://github.com/Mr-Aurevo-X/Hub-Systeme-Linux/releases/download/v1.1.2/INSTALLER-RACCOURCI-FLATPAK.sh
 bash ./INSTALLER-RACCOURCI-FLATPAK.sh
 flatpak run org.mraurevox.HubSysteme
 ```
