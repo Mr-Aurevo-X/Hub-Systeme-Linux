@@ -215,6 +215,86 @@ def list_packages(*, managers: list[str] | None = None) -> list[dict[str, Any]]:
     return packages
 
 
+def parse_pacman_orphans(text: str) -> list[str]:
+    names: list[str] = []
+    for line in (text or "").splitlines():
+        name = line.strip()
+        if name and PKG_NAME_RE.fullmatch(name):
+            names.append(name)
+    return names
+
+
+def parse_apt_autoremove(text: str) -> list[str]:
+    names: list[str] = []
+    in_block = False
+    for line in (text or "").splitlines():
+        stripped = line.strip()
+        if "will be REMOVED" in stripped or "seront SUPPRIM" in stripped:
+            in_block = True
+            continue
+        if stripped.startswith("Remv "):
+            parts = stripped.split()
+            if len(parts) >= 2 and PKG_NAME_RE.fullmatch(parts[1]):
+                names.append(parts[1])
+            continue
+        if not in_block:
+            continue
+        if not stripped or stripped[0].isdigit():
+            in_block = False
+            continue
+        for part in stripped.split():
+            if PKG_NAME_RE.fullmatch(part):
+                names.append(part)
+    return names
+
+
+def parse_dnf_unneeded(text: str) -> list[str]:
+    names: list[str] = []
+    for line in (text or "").splitlines():
+        token = line.split()[0] if line.strip() else ""
+        if token and PKG_NAME_RE.fullmatch(token):
+            names.append(token)
+    return names
+
+
+def list_orphans() -> list[dict[str, Any]]:
+    """Return unused packages per available native manager (no Flatpak/Snap)."""
+    avail = available_managers()
+    items: list[dict[str, Any]] = []
+    seen: set[tuple[str, str]] = set()
+
+    def _add(manager: str, name: str) -> None:
+        key = (manager, name)
+        if key in seen:
+            return
+        seen.add(key)
+        items.append({"name": name, "id": name, "manager": manager, "version": ""})
+
+    if avail.get("pacman") and shutil.which("pacman"):
+        try:
+            completed = _run(["pacman", "-Qtdq"], timeout=60.0)
+            for name in parse_pacman_orphans(completed.stdout or ""):
+                _add("pacman", name)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if avail.get("apt") and shutil.which("apt-get"):
+        try:
+            completed = _run(["apt-get", "-s", "-y", "autoremove"], timeout=90.0)
+            for name in parse_apt_autoremove(f"{completed.stdout}\n{completed.stderr}"):
+                _add("apt", name)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    if avail.get("dnf") and shutil.which("dnf"):
+        try:
+            completed = _run(["dnf", "repoquery", "--unneeded", "-q"], timeout=90.0)
+            for name in parse_dnf_unneeded(completed.stdout or ""):
+                _add("dnf", name)
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+    items.sort(key=lambda item: (item["manager"], item["name"].lower()))
+    return items
+
+
 def _validate_pkg_id(pkg_id: str) -> str:
     cleaned = pkg_id.strip()
     if not cleaned or not PKG_NAME_RE.match(cleaned):

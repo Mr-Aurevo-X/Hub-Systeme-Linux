@@ -13,11 +13,18 @@ gi.require_version("Adw", "1")
 
 from gi.repository import Adw, Gtk  # noqa: E402
 
-from core import health, i18n, link_status, monitoring, process, settings as app_settings
+from core import alerts, health, i18n, link_status, monitoring, process, settings as app_settings
 from core import backup as backup_mod
 from core import smart as smart_mod
 from ui.adw_compat import make_message_dialog
-from ui.components import CircularGauge, CoreBars, MetricRow, Sparkline, run_in_thread
+from ui.components import (
+    CircularGauge,
+    CoreBars,
+    MetricRow,
+    Sparkline,
+    confirm_dialog,
+    run_in_thread,
+)
 
 
 def _wrap_gauge(child: Gtk.Widget, *, on_click: Any = None) -> Gtk.Widget:
@@ -98,16 +105,16 @@ def build(win: Any) -> Gtk.Widget:
     if banner_cls is not None:
         win._dash_banner = banner_cls.new("")
         win._dash_banner.set_revealed(False)
-        win._dash_banner.set_button_label(i18n.t("dash_view_processes"))
-        win._dash_banner.connect("button-clicked", lambda *_: win._goto_page("processes"))
+        win._dash_banner.set_button_label(i18n.t("alerts_history"))
+        win._dash_banner.connect("button-clicked", lambda *_: present_alert_history_dialog(win))
         box.append(win._dash_banner)
     else:
         win._dash_banner = None
         win._dash_alert_row = Adw.ActionRow(title=i18n.t("alerts"), subtitle="")
         win._dash_alert_row.set_visible(False)
-        alert_btn = Gtk.Button(label=i18n.t("dash_view_processes"))
+        alert_btn = Gtk.Button(label=i18n.t("alerts_history"))
         alert_btn.set_valign(Gtk.Align.CENTER)
-        alert_btn.connect("clicked", lambda *_: win._goto_page("processes"))
+        alert_btn.connect("clicked", lambda *_: present_alert_history_dialog(win))
         win._dash_alert_row.add_suffix(alert_btn)
         box.append(win._dash_alert_row)
 
@@ -564,6 +571,55 @@ def update(win: Any, metrics: dict[str, Any]) -> None:
     _refresh_top_procs(win)
 
 
+def _rows_extra_child(rows: list[tuple[str, str]]) -> Gtk.Widget:
+    listbox = Gtk.ListBox()
+    listbox.set_selection_mode(Gtk.SelectionMode.NONE)
+    listbox.add_css_class("boxed-list")
+    for title, subtitle in rows:
+        row = Adw.ActionRow(title=title, subtitle=subtitle)
+        row.set_activatable(False)
+        listbox.append(row)
+    scrolled = Gtk.ScrolledWindow()
+    scrolled.set_min_content_height(160)
+    scrolled.set_max_content_height(360)
+    scrolled.set_child(listbox)
+    return scrolled
+
+
+def present_alert_history_dialog(win: Any) -> None:
+    entries = alerts.format_history_entries(list(win._settings.get("alert_history") or []))
+    extra = None
+    body = i18n.t("alerts_history_empty")
+    if entries:
+        body = ""
+        extra = _rows_extra_child([(item["when"], item["body"]) for item in entries])
+    dialog = make_message_dialog(win, i18n.t("alerts_history"), body, extra_child=extra)
+    dialog.add_response("close", i18n.t("update_close"))
+    if entries:
+        dialog.add_response("clear", i18n.t("alerts_history_clear"))
+    dialog.set_default_response("close")
+    dialog.set_close_response("close")
+
+    def on_response(_dialog: object, response: str) -> None:
+        if response != "clear":
+            return
+        confirm_dialog(
+            win,
+            i18n.t("alerts_history"),
+            i18n.t("alerts_history_clear"),
+            confirm_label=i18n.t("alerts_history_clear"),
+            on_confirm=lambda: _clear_alert_history(win),
+        )
+
+    dialog.connect("response", on_response)
+    dialog.present(win)
+
+
+def _clear_alert_history(win: Any) -> None:
+    win._settings["alert_history"] = []
+    app_settings.save_settings(win._settings)
+
+
 def present_smart_dialog(win: Any) -> None:
     items = list(getattr(win, "_smart_items", None) or [])
     if not items and smart_mod.is_available():
@@ -572,19 +628,21 @@ def present_smart_dialog(win: Any) -> None:
             win._smart_items = list(items)
         except (OSError, RuntimeError, smart_mod.SmartError):
             items = []
-    if not items:
-        body = i18n.t("dash_smart_empty")
-    else:
-        lines: list[str] = []
-        for item in items:
-            device = str(item.get("device") or "?")
-            if item.get("ok"):
-                lines.append(f"{device} — {item.get('health')}")
-                continue
-            detail = item.get("error") or item.get("health") or i18n.t("dash_smart_error")
-            lines.append(f"{device} — {detail}")
-        body = "\n".join(lines)
-    dialog = make_message_dialog(win, i18n.t("dash_smart_dialog_title"), body)
+    rows = smart_mod.format_dialog_rows(items)
+    extra = None
+    body = i18n.t("dash_smart_empty")
+    if rows:
+        body = ""
+        extra = _rows_extra_child(
+            [
+                (
+                    item["device"],
+                    item["detail"] or i18n.t("dash_smart_error"),
+                )
+                for item in rows
+            ]
+        )
+    dialog = make_message_dialog(win, i18n.t("dash_smart_dialog_title"), body, extra_child=extra)
     dialog.add_response("close", i18n.t("update_close"))
     dialog.set_default_response("close")
     dialog.set_close_response("close")

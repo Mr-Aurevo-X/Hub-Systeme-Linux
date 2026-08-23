@@ -28,7 +28,7 @@ def build(win: Any) -> Gtk.Widget:
     win._timers_spinner.set_visible(False)
     win._timers_search = Gtk.SearchEntry()
     win._timers_search.set_hexpand(True)
-    set_placeholder_text(win._timers_search, i18n.t("filter_services"))
+    set_placeholder_text(win._timers_search, i18n.t("filter_timers"))
     win._timers_search.connect("search-changed", lambda *_: render(win))
     refresh_btn = Gtk.Button.new_from_icon_name("view-refresh-symbolic")
     refresh_btn.connect("clicked", lambda *_: refresh(win, show_spinner=True))
@@ -81,11 +81,19 @@ def render(win: Any) -> None:
             f"{item.get('enabled') or '—'}"
         )
         enabled = str(item.get("enabled") or "").lower() == "enabled"
+        start_btn = Gtk.Button(label=i18n.t("timers_start"))
+        start_btn.set_valign(Gtk.Align.CENTER)
+        start_btn.connect("clicked", lambda *_a, u=unit: _control(win, u, "start"))
+        stop_btn = Gtk.Button(label=i18n.t("timers_stop"))
+        stop_btn.set_valign(Gtk.Align.CENTER)
+        stop_btn.connect("clicked", lambda *_a, u=unit: _control(win, u, "stop"))
         toggle = Gtk.Button(
             label=i18n.t("timers_disable") if enabled else i18n.t("timers_enable")
         )
         toggle.set_valign(Gtk.Align.CENTER)
         toggle.connect("clicked", lambda *_a, u=unit, en=enabled: _toggle(win, u, en))
+        row.add_suffix(start_btn)
+        row.add_suffix(stop_btn)
         row.add_suffix(toggle)
         win._timers_list.append(row)
 
@@ -109,9 +117,14 @@ def refresh(win: Any, *, show_spinner: bool = False) -> None:
     run_in_thread(work, done)
 
 
-def _toggle(win: Any, unit: str, currently_enabled: bool) -> None:
-    action = "disable" if currently_enabled else "enable"
-    label = i18n.t("timers_disable") if currently_enabled else i18n.t("timers_enable")
+def _control(win: Any, unit: str, action: str) -> None:
+    labels = {
+        "start": i18n.t("timers_start"),
+        "stop": i18n.t("timers_stop"),
+        "enable": i18n.t("timers_enable"),
+        "disable": i18n.t("timers_disable"),
+    }
+    label = labels.get(action, action)
 
     def on_confirm() -> None:
         def work() -> None:
@@ -129,5 +142,10 @@ def _toggle(win: Any, unit: str, currently_enabled: bool) -> None:
         win,
         label,
         unit,
+        destructive=action in {"stop", "disable"},
         on_confirm=on_confirm,
     )
+
+
+def _toggle(win: Any, unit: str, currently_enabled: bool) -> None:
+    _control(win, unit, "disable" if currently_enabled else "enable")

@@ -117,6 +117,14 @@ _PASS1_KEYS = (
     "logs_preset_name",
     "logs_preset_delete",
     "logs_preset_saved",
+    "process_kill_tree",
+    "sessions_terminate",
+    "logs_follow",
+    "timers_start",
+    "filter_timers",
+    "pkg_uninstall",
+    "pkg_orphans",
+    "alerts_history",
 )
 
 

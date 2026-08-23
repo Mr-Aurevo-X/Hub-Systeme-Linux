@@ -3,13 +3,50 @@
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
 import subprocess
 from typing import Any
 
+from core import executil
+
+SESSION_ID_RE = re.compile(r"^[A-Za-z0-9-]+$")
+
 
 class SessionError(Exception):
     """Raised when session listing fails."""
+
+
+def validate_session_id(value: str) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned or not SESSION_ID_RE.fullmatch(cleaned):
+        raise SessionError("Identifiant de session invalide")
+    return cleaned
+
+
+def current_session_id() -> str | None:
+    raw = (os.environ.get("XDG_SESSION_ID") or "").strip()
+    return raw or None
+
+
+def is_current_session(session_id: str) -> bool:
+    cur = current_session_id()
+    try:
+        return cur is not None and cur == validate_session_id(session_id)
+    except SessionError:
+        return False
+
+
+def terminate_session(session_id: str) -> None:
+    sid = validate_session_id(session_id)
+    if shutil.which("loginctl") is None:
+        raise SessionError("loginctl introuvable")
+    try:
+        completed = executil.run_pkexec(["loginctl", "terminate-session", sid], timeout=60.0)
+        executil.check_ok(completed, what="loginctl terminate-session")
+    except executil.ExecError as exc:
+        raise SessionError(str(exc)) from exc
 
 
 def _run(cmd: list[str], *, timeout: float = 20.0) -> subprocess.CompletedProcess[str]:

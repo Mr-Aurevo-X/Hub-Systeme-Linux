@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import signal
+import subprocess
 import threading
 import time
 from collections.abc import Callable
@@ -26,6 +27,7 @@ from core import (
     connections,
     firewall,
     health,
+    host,
     i18n,
     jobs,
     logs,
@@ -43,6 +45,7 @@ from core import (
 )
 from ui import job_console
 from ui import pages as ui_pages
+from ui.pages import dashboard as dash_page
 from ui.adw_compat import (
     make_message_dialog,
     make_spin_row,
@@ -99,11 +102,15 @@ class MainWindow(Adw.ApplicationWindow):
         self._service_filter = ""
         self._service_chip = "active"  # active | enabled | failed | all
         self._package_filter = ""
-        self._package_manager = "all"  # all | apt | flatpak | snap
+        self._package_manager = "all"  # all | apt | flatpak | snap | orphans
+        self._package_orphan_cache: list[dict[str, Any]] = []
+        self._package_orphans_fetched = False
         self._logs_priority = "all"
         self._logs_grep = ""
         self._logs_text_cache = ""
         self._logs_preset_guard = False
+        self._logs_follow_proc: subprocess.Popen[str] | None = None
+        self._logs_following = False
         self._network_chip = "wifi"
         self._connection_items: list[dict[str, Any]] = []
         self._busy_ops = 0
@@ -198,6 +205,7 @@ class MainWindow(Adw.ApplicationWindow):
             body = i18n.t("health_ok")
         dialog = make_message_dialog(self, i18n.t("health_dialog_title"), body)
         dialog.add_response("close", i18n.t("update_close"))
+        dialog.add_response("history", i18n.t("alerts_history"))
         first_page = str(recs[0].get("page") or "") if recs else ""
         if first_page:
             dialog.add_response("go", i18n.t("health_open_page"))
@@ -209,6 +217,8 @@ class MainWindow(Adw.ApplicationWindow):
         def on_response(_dialog: object, response: str) -> None:
             if response == "go" and first_page:
                 self._goto_page(first_page)
+            elif response == "history":
+                dash_page.present_alert_history_dialog(self)
 
         dialog.connect("response", on_response)
         dialog.present(self)
@@ -326,6 +336,8 @@ class MainWindow(Adw.ApplicationWindow):
         return widget
 
     def _show_page(self, key: str) -> None:
+        if key != "logs":
+            self._stop_logs_follow()
         self._current_page = key
         titles = page_titles()
         if self._layout is not None:
@@ -590,6 +602,7 @@ class MainWindow(Adw.ApplicationWindow):
             child = self._stack.get_child_by_name(name)
             if child is not None:
                 self._stack.remove(child)
+        self._stop_logs_follow()
         self._built_pages.clear()
         self._privileged_buttons.clear()
         self._process_rows.clear()
@@ -928,8 +941,10 @@ class MainWindow(Adw.ApplicationWindow):
 
         dialog.add_response("close", i18n.t("process_close"))
         dialog.add_response("term", "SIGTERM")
+        dialog.add_response("tree", i18n.t("process_kill_tree"))
         dialog.add_response("kill", "SIGKILL")
         dialog.set_response_appearance("term", response_appearance("SUGGESTED"))
+        dialog.set_response_appearance("tree", response_appearance("DESTRUCTIVE"))
         dialog.set_response_appearance("kill", response_appearance("DESTRUCTIVE"))
         dialog.set_default_response("close")
         dialog.set_close_response("close")
@@ -937,11 +952,41 @@ class MainWindow(Adw.ApplicationWindow):
         def on_response(_d: object, response: str) -> None:
             if response == "term":
                 self._do_kill(pid, signal.SIGTERM)
+            elif response == "tree":
+                self._confirm_kill_tree(pid, info)
             elif response == "kill":
                 self._do_kill(pid, signal.SIGKILL)
 
         dialog.connect("response", on_response)
         dialog.present(self)
+
+    def _confirm_kill_tree(self, pid: int, info: dict[str, Any]) -> None:
+        children = list(info.get("children") or [])
+        confirm_dialog(
+            self,
+            i18n.t("process_kill_tree_title"),
+            i18n.t("process_kill_tree_body", pid=pid, count=len(children)),
+            confirm_label=i18n.t("process_kill_tree"),
+            destructive=True,
+            on_confirm=lambda: self._do_kill_tree(pid),
+        )
+
+    def _do_kill_tree(self, pid: int) -> None:
+        self._set_busy(True)
+
+        def work() -> list[int]:
+            return process.kill_tree(pid)
+
+        def done(result: Any, error: BaseException | None) -> None:
+            self._set_busy(False)
+            if error is not None:
+                show_toast(self._toast_overlay, str(error))
+                return
+            count = len(result or [])
+            show_toast(self._toast_overlay, i18n.t("process_kill_tree_done", count=count))
+            self._refresh_processes()
+
+        run_in_thread(work, done)
 
     def _confirm_kill(self, pid: int) -> None:
         confirm_dialog(
@@ -1290,7 +1335,13 @@ class MainWindow(Adw.ApplicationWindow):
         chips.set_margin_end(12)
         chips.set_margin_bottom(4)
         self._package_chip_buttons: dict[str, Gtk.ToggleButton] = {}
-        for key, label in (("all", i18n.t("pkg_all")), ("apt", "APT"), ("flatpak", "Flatpak"), ("snap", "Snap")):
+        for key, label in (
+            ("all", i18n.t("pkg_all")),
+            ("apt", "APT"),
+            ("flatpak", "Flatpak"),
+            ("snap", "Snap"),
+            ("orphans", i18n.t("pkg_orphans")),
+        ):
             btn = Gtk.ToggleButton(label=label)
             btn.add_css_class("filter-chip")
             btn.set_active(key == self._package_manager)
@@ -1328,11 +1379,19 @@ class MainWindow(Adw.ApplicationWindow):
         for k, btn in self._package_chip_buttons.items():
             if k != key and btn.get_active():
                 btn.set_active(False)
-        self._render_packages(self._package_data_cache)
+        if key == "orphans" and not self._package_orphans_fetched:
+            self._refresh_packages(show_spinner=True)
+            return
+        self._render_packages(self._current_package_items())
+
+    def _current_package_items(self) -> list[dict[str, Any]]:
+        if self._package_manager == "orphans":
+            return self._package_orphan_cache
+        return self._package_data_cache
 
     def _apply_package_filter(self) -> None:
         self._package_filter = self._package_search.get_text().strip().lower()
-        self._render_packages(self._package_data_cache)
+        self._render_packages(self._current_package_items())
 
     def _refresh_packages(self, *, show_spinner: bool = False) -> None:
         avail = packages.available_managers()
@@ -1342,17 +1401,23 @@ class MainWindow(Adw.ApplicationWindow):
         self._managers_label.set_text(i18n.t("pkg_managers_detected", managers=present))
         if show_spinner:
             self._package_spinner.set_visible(True)
+        orphans = self._package_manager == "orphans"
 
         def work() -> list[dict[str, Any]]:
-            return packages.list_packages()
+            return packages.list_orphans() if orphans else packages.list_packages()
 
         def done(result: Any, error: BaseException | None) -> None:
             self._package_spinner.set_visible(False)
             if error is not None:
-                show_toast(self._toast_overlay, i18n.t("pkg_error", detail=str(error)))
+                key = "pkg_orphans_error" if orphans else "pkg_error"
+                show_toast(self._toast_overlay, i18n.t(key, detail=str(error)))
                 return
-            self._package_data_cache = list(result or [])
-            self._render_packages(self._package_data_cache)
+            if orphans:
+                self._package_orphan_cache = list(result or [])
+                self._package_orphans_fetched = True
+            else:
+                self._package_data_cache = list(result or [])
+            self._render_packages(self._current_package_items())
 
         run_in_thread(work, done)
 
@@ -1363,7 +1428,7 @@ class MainWindow(Adw.ApplicationWindow):
         manager = self._package_manager
         count = 0
         for item in items:
-            if manager != "all" and item.get("manager") != manager:
+            if manager not in {"all", "orphans"} and item.get("manager") != manager:
                 continue
             hay = f"{item['name']} {item['id']} {item['manager']}".lower()
             if needle and needle not in hay:
@@ -1378,16 +1443,21 @@ class MainWindow(Adw.ApplicationWindow):
             row = ActionListRow(
                 title,
                 subtitle,
-                button_label="Désinstaller",
+                button_label=i18n.t("pkg_uninstall"),
                 on_clicked=lambda m=mgr, i=pkg_id: self._confirm_uninstall(m, i),
             )
             row.set_busy(self._busy_ops > 0)
             if mgr == "flatpak":
-                perm_btn = Gtk.Button(label="Permissions")
+                perm_btn = Gtk.Button(label=i18n.t("pkg_permissions"))
                 perm_btn.set_valign(Gtk.Align.CENTER)
                 perm_btn.connect("clicked", lambda *_a, i=pkg_id: self._show_flatpak_permissions(i))
                 row.add_suffix(perm_btn)
             self._package_list.append(row)
+        if count == 0 and manager == "orphans":
+            empty = Adw.ActionRow()
+            empty.set_title(i18n.t("pkg_orphans_empty"))
+            empty.set_activatable(False)
+            self._package_list.append(empty)
         GLib.idle_add(lambda: restore() or False)
 
     def _check_package_updates(self) -> None:
@@ -1521,9 +1591,11 @@ class MainWindow(Adw.ApplicationWindow):
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            text = (result or {}).get("text") or "(vide)"
-            dialog = make_message_dialog(self, f"Permissions — {app_id}", text[:4000])
-            dialog.add_response("close", "Fermer")
+            text = (result or {}).get("text") or "—"
+            dialog = make_message_dialog(
+                self, f"{i18n.t('pkg_permissions')} — {app_id}", text[:4000]
+            )
+            dialog.add_response("close", i18n.t("update_close"))
             dialog.set_default_response("close")
             dialog.set_close_response("close")
             dialog.present(self)
@@ -1533,15 +1605,15 @@ class MainWindow(Adw.ApplicationWindow):
     def _confirm_uninstall(self, manager: str, pkg_id: str) -> None:
         confirm_dialog(
             self,
-            "Désinstaller le paquet ?",
+            i18n.t("pkg_uninstall_title"),
             f"{manager}: {pkg_id}",
-            confirm_label="Désinstaller",
+            confirm_label=i18n.t("pkg_uninstall"),
             on_confirm=lambda: self._do_uninstall(manager, pkg_id),
         )
 
     def _do_uninstall(self, manager: str, pkg_id: str) -> None:
         self._set_busy(True)
-        show_toast(self._toast_overlay, f"Désinstallation de {pkg_id}…", timeout=3)
+        show_toast(self._toast_overlay, i18n.t("pkg_uninstalling", pkg=pkg_id), timeout=3)
 
         def work() -> dict[str, Any]:
             return packages.uninstall_package(manager, pkg_id)
@@ -1551,7 +1623,9 @@ class MainWindow(Adw.ApplicationWindow):
             if error is not None:
                 show_toast(self._toast_overlay, str(error))
                 return
-            show_toast(self._toast_overlay, f"Désinstallé: {pkg_id}")
+            show_toast(self._toast_overlay, i18n.t("pkg_uninstalled", pkg=pkg_id))
+            if self._package_manager == "orphans":
+                self._package_orphans_fetched = False
             self._refresh_packages()
 
         run_in_thread(work, done)
@@ -1571,6 +1645,8 @@ class MainWindow(Adw.ApplicationWindow):
         self._logs_spinner.set_visible(False)
         export_btn = Gtk.Button(label=i18n.t("export"))
         export_btn.connect("clicked", lambda *_: self._export_logs())
+        self._logs_follow_btn = Gtk.Button(label=i18n.t("logs_follow"))
+        self._logs_follow_btn.connect("clicked", lambda *_: self._toggle_logs_follow())
         sys_btn = Gtk.Button(label=i18n.t("journal_system_admin"))
         sys_btn.connect(
             "clicked",
@@ -1583,6 +1659,7 @@ class MainWindow(Adw.ApplicationWindow):
         bar.append(self._logs_search)
         bar.append(self._logs_spinner)
         bar.append(export_btn)
+        bar.append(self._logs_follow_btn)
         bar.append(sys_btn)
         bar.append(refresh_btn)
         root.append(bar)
@@ -1661,6 +1738,88 @@ class MainWindow(Adw.ApplicationWindow):
     def _apply_logs_filter(self) -> None:
         self._logs_grep = self._logs_search.get_text().strip()
         self._refresh_logs(show_spinner=True)
+
+    def _update_follow_button(self) -> None:
+        btn = getattr(self, "_logs_follow_btn", None)
+        if btn is None:
+            return
+        btn.set_label(i18n.t("logs_follow_stop") if self._logs_following else i18n.t("logs_follow"))
+
+    def _append_follow_line(self, line: str) -> bool:
+        view = getattr(self, "_logs_view", None)
+        if view is None:
+            return False
+        buf = view.get_buffer()
+        buf.insert(buf.get_end_iter(), line)
+        view.scroll_to_iter(buf.get_end_iter(), 0.0, False, 0.0, 0.0)
+        return False
+
+    def _on_follow_ended(self, proc: subprocess.Popen[str]) -> bool:
+        if self._logs_follow_proc is proc:
+            self._logs_follow_proc = None
+            self._logs_following = False
+            self._update_follow_button()
+        return False
+
+    def _stop_logs_follow(self) -> None:
+        proc = self._logs_follow_proc
+        self._logs_follow_proc = None
+        self._logs_following = False
+        self._update_follow_button()
+        if proc is None:
+            return
+        if proc.poll() is None:
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+
+    def _start_logs_follow(self, *, privileged: bool = False) -> None:
+        self._stop_logs_follow()
+        try:
+            argv = logs.follow_argv(
+                priority=self._logs_priority,
+                grep=self._logs_grep,
+                privileged=privileged,
+            )
+            proc = host.popen(
+                argv,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+            )
+        except (logs.LogsError, OSError) as exc:
+            show_toast(self._toast_overlay, i18n.t("logs_follow_error", detail=str(exc)))
+            return
+        self._logs_follow_proc = proc
+        self._logs_following = True
+        self._update_follow_button()
+        status = getattr(self, "_logs_status", None)
+        if status is not None:
+            status.set_text(i18n.t("logs_follow_on"))
+
+        def reader() -> None:
+            stream = proc.stdout
+            if stream is None:
+                return
+            try:
+                for line in stream:
+                    if not self._logs_following or proc is not self._logs_follow_proc:
+                        break
+                    GLib.idle_add(self._append_follow_line, line)
+            except (OSError, ValueError):
+                pass
+            GLib.idle_add(self._on_follow_ended, proc)
+
+        threading.Thread(target=reader, daemon=True, name="hub-journal-follow").start()
+
+    def _toggle_logs_follow(self) -> None:
+        if self._logs_following:
+            self._stop_logs_follow()
+            return
+        self._start_logs_follow(privileged=False)
 
     def _log_preset_names(self) -> list[str]:
         names: list[str] = []
@@ -1756,6 +1915,7 @@ class MainWindow(Adw.ApplicationWindow):
         self._fill_log_presets()
 
     def _refresh_logs(self, *, show_spinner: bool = False, privileged: bool = False) -> None:
+        self._stop_logs_follow()
         if show_spinner:
             self._logs_spinner.set_visible(True)
         if privileged:

@@ -13,7 +13,7 @@ gi.require_version("Adw", "1")
 from gi.repository import Adw, Gtk  # noqa: E402
 
 from core import i18n, sessions
-from ui.components import run_in_thread, show_toast
+from ui.components import confirm_dialog, run_in_thread, show_toast
 
 
 def build(win: Any) -> Gtk.Widget:
@@ -65,6 +65,13 @@ def render(win: Any, items: list[dict[str, Any]]) -> None:
         row.set_subtitle(
             f"{item.get('session') or '—'} · {item.get('seat') or '—'} · {item.get('state') or '—'}"
         )
+        sid = str(item.get("session") or "")
+        if sid:
+            btn = Gtk.Button(label=i18n.t("sessions_terminate"))
+            btn.set_valign(Gtk.Align.CENTER)
+            btn.add_css_class("destructive-action")
+            btn.connect("clicked", lambda *_a, s=sid: _confirm_terminate(win, s))
+            row.add_suffix(btn)
         win._sessions_list.append(row)
 
 
@@ -83,5 +90,37 @@ def refresh(win: Any, *, show_spinner: bool = False) -> None:
             show_toast(win._toast_overlay, i18n.t("sessions_error", detail=str(error)))
             return
         render(win, list(data or []))
+
+    run_in_thread(work, done)
+
+
+def _confirm_terminate(win: Any, session_id: str) -> None:
+    current = sessions.is_current_session(session_id)
+    title = i18n.t("sessions_terminate_self_title" if current else "sessions_terminate_title")
+    body = (
+        i18n.t("sessions_terminate_self_body")
+        if current
+        else i18n.t("sessions_terminate_body", session=session_id)
+    )
+    confirm_dialog(
+        win,
+        title,
+        body,
+        confirm_label=i18n.t("sessions_terminate"),
+        destructive=True,
+        on_confirm=lambda: _do_terminate(win, session_id),
+    )
+
+
+def _do_terminate(win: Any, session_id: str) -> None:
+    def work() -> None:
+        sessions.terminate_session(session_id)
+
+    def done(_ok: object, error: BaseException | None) -> None:
+        if error is not None:
+            show_toast(win._toast_overlay, i18n.t("sessions_error", detail=str(error)))
+            return
+        show_toast(win._toast_overlay, i18n.t("sessions_terminated", session=session_id))
+        refresh(win, show_spinner=True)
 
     run_in_thread(work, done)

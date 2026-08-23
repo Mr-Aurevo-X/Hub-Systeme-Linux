@@ -270,6 +270,34 @@ def renice_process(pid: int, nice: int) -> None:
         )
 
 
+def tree_kill_targets(tree: dict[str, Any]) -> list[int]:
+    """Parent PID first, then direct children (no recursion)."""
+    pids: list[int] = []
+    raw = tree.get("pid")
+    if isinstance(raw, int) and raw > 0:
+        pids.append(raw)
+    for child in tree.get("children") or []:
+        if not isinstance(child, dict):
+            continue
+        cid = child.get("pid")
+        if isinstance(cid, int) and cid > 0 and cid not in pids:
+            pids.append(cid)
+    return pids
+
+
+def kill_tree(pid: int) -> list[int]:
+    """SIGTERM the process and its direct children."""
+    tree = process_tree(pid)
+    sent: list[int] = []
+    for target in tree_kill_targets(tree):
+        try:
+            kill_process(target, signal.SIGTERM)
+            sent.append(target)
+        except ProcessError:
+            continue
+    return sent
+
+
 def process_tree(pid: int) -> dict[str, Any]:
     """Return parent + children summary for a process."""
     if host.is_flatpak():

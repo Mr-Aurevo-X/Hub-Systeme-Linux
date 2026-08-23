@@ -74,6 +74,19 @@ def status_summary(items: list[dict[str, Any]]) -> dict[str, str]:
     return {"kind": "bad", "text": text}
 
 
+def format_dialog_rows(items: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Device / health rows for the SMART dialog (max 6)."""
+    rows: list[dict[str, str]] = []
+    for item in (items or [])[:6]:
+        device = str(item.get("device") or "?")
+        if item.get("ok"):
+            detail = str(item.get("health") or "")
+        else:
+            detail = str(item.get("error") or item.get("health") or "")
+        rows.append({"device": device, "detail": detail})
+    return rows
+
+
 def summarize() -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for dev in list_block_devices()[:6]:

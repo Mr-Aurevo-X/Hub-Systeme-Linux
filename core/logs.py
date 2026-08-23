@@ -173,6 +173,43 @@ def read_journal(
     }
 
 
+def _validate_follow_grep(grep: str) -> str:
+    cleaned = (grep or "").strip()
+    if not cleaned:
+        return ""
+    if "\n" in cleaned or "\r" in cleaned or cleaned.startswith("-") or len(cleaned) > 200:
+        raise LogsError("Filtre journal invalide")
+    return cleaned
+
+
+def follow_argv(*, priority: str = "all", grep: str = "", privileged: bool = False) -> list[str]:
+    """Argv for ``journalctl -f``. Never uses a shell."""
+    if shutil.which("journalctl") is None:
+        raise LogsError(
+            "journalctl introuvable sur l'hôte. Installez systemd, ou relancez "
+            "Hub Système hors Flatpak (LANCER.sh)."
+        )
+    prio = PRIORITY_MAP.get(priority, PRIORITY_MAP["all"])
+    argv = [
+        "journalctl",
+        "-n",
+        "0",
+        "-f",
+        "--no-pager",
+        "--output=short-iso",
+        "-p",
+        prio,
+    ]
+    needle = _validate_follow_grep(grep)
+    if needle:
+        argv.extend(["--grep", needle])
+    if privileged:
+        if shutil.which("pkexec") is None:
+            raise LogsError("pkexec introuvable (installez policykit)")
+        argv = ["pkexec", *argv, "--system"]
+    return argv
+
+
 def export_journal(path: str | Path, *, text: str) -> Path:
     out = Path(path).expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)

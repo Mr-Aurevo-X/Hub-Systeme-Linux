@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime, timezone
 from typing import Any
 
 _MAX_HISTORY = 50
@@ -15,6 +16,31 @@ def append_history(settings: dict[str, Any], messages: list[str]) -> list[dict[s
     history = list(settings.get("alert_history") or [])
     history.append({"ts": time.time(), "messages": list(messages)})
     return history[-_MAX_HISTORY:]
+
+
+def format_history_entries(history: list[Any]) -> list[dict[str, str]]:
+    """Normalize persisted alert_history rows for the UI."""
+    rows: list[dict[str, str]] = []
+    for item in history or []:
+        if not isinstance(item, dict):
+            continue
+        messages = item.get("messages")
+        if not isinstance(messages, list):
+            continue
+        texts = [str(msg).strip() for msg in messages if str(msg).strip()]
+        if not texts:
+            continue
+        when = ""
+        raw_ts = item.get("ts")
+        try:
+            ts = float(raw_ts)
+            when = datetime.fromtimestamp(ts, tz=timezone.utc).astimezone().strftime(
+                "%Y-%m-%d %H:%M"
+            )
+        except (TypeError, ValueError, OSError):
+            when = "—"
+        rows.append({"when": when, "body": " · ".join(texts)})
+    return rows
 
 
 def send_desktop_notification(
