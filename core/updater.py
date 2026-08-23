@@ -225,9 +225,11 @@ def flatpak_install_block(info: dict[str, Any]) -> str:
     asset = str(info.get("asset_name") or FLATPAK_ASSET)
     shortcut_url = str(info.get("shortcut_url") or SHORTCUT_DIRECT.format(version=version))
     return (
-        f"wget -O {asset} \\\n  {url}\n"
+        f"rm -f {asset}\n"
+        f"wget --no-continue -O {asset} \\\n  {url}\n"
         f"flatpak install --user -y --reinstall ./{asset}\n"
-        f"wget -O {SHORTCUT_ASSET} \\\n  {shortcut_url}\n"
+        f"rm -f {SHORTCUT_ASSET}\n"
+        f"wget --no-continue -O {SHORTCUT_ASSET} \\\n  {shortcut_url}\n"
         f"bash ./{SHORTCUT_ASSET}\n"
         f"flatpak run {APP_ID}"
     )
@@ -522,7 +524,7 @@ def _shell_download_cmd(url: str, dest: Path) -> str:
     return "\n".join(
         [
             "if command -v wget >/dev/null 2>&1; then",
-            f"  wget -O {q_dest} --https-only --max-redirect=8 --timeout=30 --quota=80m {q_url}",
+            f"  wget --no-continue -O {q_dest} --https-only --max-redirect=8 --timeout=30 --quota=80m {q_url}",
             "elif command -v curl >/dev/null 2>&1; then",
             (
                 "  curl -fL --proto '=https' --tlsv1.2 "

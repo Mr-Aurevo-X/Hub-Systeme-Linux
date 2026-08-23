@@ -23,6 +23,9 @@ def test_flatpak_install_block_includes_menu_shortcut() -> None:
     block = updater.flatpak_install_block(info)
     assert "INSTALLER-RACCOURCI-FLATPAK.sh" in block
     assert "bash ./INSTALLER-RACCOURCI-FLATPAK.sh" in block
+    assert "rm -f org.mraurevox.HubSysteme.flatpak" in block
+    assert "wget --no-continue -O org.mraurevox.HubSysteme.flatpak" in block
+    assert "rm -f INSTALLER-RACCOURCI-FLATPAK.sh" in block
     assert updater.SHORTCUT_DIRECT.format(version="2.2.3") in block
 
 
