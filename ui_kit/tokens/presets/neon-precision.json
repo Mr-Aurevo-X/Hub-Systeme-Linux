@@ -1,0 +1,28 @@
+{
+  "id": "neon-precision",
+  "label": "Neon Precision",
+  "description": "Cyber — texte blanc fort, néon sur accents.",
+  "colors": {
+    "bg": "#04060a",
+    "surface": "#0a0e16",
+    "surface2": "#0f1420",
+    "text": "#ffffff",
+    "muted": "#a8b8d0",
+    "accent": "#e03545",
+    "accent2": "#2ee0ff",
+    "ok": "#2dff9a",
+    "warn": "#ffb020",
+    "danger": "#ff4466",
+    "border": "rgba(46, 224, 255, 0.14)",
+    "borderStrong": "rgba(46, 224, 255, 0.28)",
+    "accentDim": "rgba(224, 53, 69, 0.22)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 22px rgba(224, 53, 69, 0.4)",
+    "glowAccent2": "0 0 20px rgba(46, 224, 255, 0.35)",
+    "shadowCard": "0 8px 28px rgba(0, 0, 0, 0.55)",
+    "radius": "10px",
+    "navStyle": "neon"
+  }
+}

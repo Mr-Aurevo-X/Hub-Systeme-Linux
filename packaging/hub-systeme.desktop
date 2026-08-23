@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Hub Système
+Comment=Gestion systeme Linux (monitoring, services, nettoyeur)
+Exec=@LAUNCHER@
+Path=@INSTALL_DIR@
+Icon=utilities-system-monitor
+Terminal=false
+Categories=System;Monitor;
+StartupNotify=true

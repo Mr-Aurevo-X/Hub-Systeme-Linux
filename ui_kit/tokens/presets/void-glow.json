@@ -1,0 +1,28 @@
+{
+  "id": "void-glow",
+  "label": "Void Glow",
+  "description": "Défaut atelier — noir profond, texte blanc, statuts vert / orange / rouge.",
+  "colors": {
+    "bg": "#030304",
+    "surface": "#0a0a0c",
+    "surface2": "#101012",
+    "text": "#ffffff",
+    "muted": "#b4bcc8",
+    "accent": "#e03545",
+    "accent2": "#6a9bb8",
+    "ok": "#42e8a0",
+    "warn": "#f5a623",
+    "danger": "#ff5565",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "borderStrong": "rgba(255, 255, 255, 0.14)",
+    "accentDim": "rgba(224, 53, 69, 0.15)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 22px rgba(224, 53, 69, 0.42)",
+    "glowAccent2": "0 0 14px rgba(106, 155, 184, 0.2)",
+    "shadowCard": "0 20px 48px rgba(0, 0, 0, 0.65)",
+    "radius": "14px",
+    "navStyle": "void"
+  }
+}

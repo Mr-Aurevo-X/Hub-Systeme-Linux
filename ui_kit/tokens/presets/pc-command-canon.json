@@ -1,0 +1,28 @@
+{
+  "id": "pc-command-canon",
+  "label": "PC Command Canon",
+  "description": "Référence marque — texte blanc, statuts vert / orange / rouge.",
+  "colors": {
+    "bg": "#06070c",
+    "surface": "#0e1118",
+    "surface2": "#12161f",
+    "text": "#ffffff",
+    "muted": "#b8c0ce",
+    "accent": "#e03545",
+    "accent2": "#3ec7ff",
+    "ok": "#3dd68c",
+    "warn": "#f0a33a",
+    "danger": "#ff5c6b",
+    "border": "rgba(255, 255, 255, 0.1)",
+    "borderStrong": "rgba(255, 255, 255, 0.16)",
+    "accentDim": "rgba(224, 53, 69, 0.18)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 18px rgba(224, 53, 69, 0.28)",
+    "glowAccent2": "0 0 16px rgba(62, 199, 255, 0.22)",
+    "shadowCard": "0 12px 32px rgba(0, 0, 0, 0.45)",
+    "radius": "14px",
+    "navStyle": "bar"
+  }
+}

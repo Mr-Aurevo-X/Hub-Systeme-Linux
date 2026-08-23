@@ -1,0 +1,28 @@
+{
+  "id": "nordic-ice",
+  "label": "Nordic Ice",
+  "description": "Flat froid — blanc pur, statuts GitHub-like.",
+  "colors": {
+    "bg": "#0d1117",
+    "surface": "#161b22",
+    "surface2": "#21262d",
+    "text": "#ffffff",
+    "muted": "#b0b8c4",
+    "accent": "#e03545",
+    "accent2": "#58a6ff",
+    "ok": "#3fb950",
+    "warn": "#e3b341",
+    "danger": "#ff7b72",
+    "border": "#30363d",
+    "borderStrong": "#484f58",
+    "accentDim": "rgba(88, 166, 255, 0.12)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "none",
+    "glowAccent2": "0 0 12px rgba(88, 166, 255, 0.2)",
+    "shadowCard": "0 4px 12px rgba(0, 0, 0, 0.35)",
+    "radius": "10px",
+    "navStyle": "flat"
+  }
+}

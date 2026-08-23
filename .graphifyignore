@@ -1,0 +1,13 @@
+venv/
+.venv/
+env/
+dist/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.flatpak-builder/
+.git/
+graphify-out/
+*.pyc
+*.egg-info/

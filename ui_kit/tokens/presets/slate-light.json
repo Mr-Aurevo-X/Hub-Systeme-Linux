@@ -1,0 +1,28 @@
+{
+  "id": "slate-light",
+  "label": "Slate Light",
+  "description": "Mode clair — texte noir, statuts vert / orange / rouge.",
+  "colors": {
+    "bg": "#f4f5f7",
+    "surface": "#ffffff",
+    "surface2": "#e8eaed",
+    "text": "#14181f",
+    "muted": "#4a5568",
+    "accent": "#c62828",
+    "accent2": "#1565c0",
+    "ok": "#1b7d4a",
+    "warn": "#c47a0a",
+    "danger": "#c62828",
+    "border": "rgba(0, 0, 0, 0.1)",
+    "borderStrong": "rgba(0, 0, 0, 0.16)",
+    "accentDim": "rgba(198, 40, 40, 0.1)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 2px 8px rgba(198, 40, 40, 0.2)",
+    "glowAccent2": "0 2px 8px rgba(21, 101, 192, 0.15)",
+    "shadowCard": "0 2px 12px rgba(0, 0, 0, 0.08)",
+    "radius": "14px",
+    "navStyle": "light"
+  }
+}

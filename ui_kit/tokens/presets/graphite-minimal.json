@@ -1,0 +1,28 @@
+{
+  "id": "graphite-minimal",
+  "label": "Graphite Minimal",
+  "description": "Pro — blanc sur graphite, statuts sans glow.",
+  "colors": {
+    "bg": "#0b0d10",
+    "surface": "#14171c",
+    "surface2": "#1a1e24",
+    "text": "#ffffff",
+    "muted": "#aeb4c0",
+    "accent": "#d94856",
+    "accent2": "#8a96a8",
+    "ok": "#4caf82",
+    "warn": "#e8a838",
+    "danger": "#f25565",
+    "border": "rgba(255, 255, 255, 0.09)",
+    "borderStrong": "rgba(255, 255, 255, 0.14)",
+    "accentDim": "rgba(217, 72, 86, 0.1)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "none",
+    "glowAccent2": "none",
+    "shadowCard": "0 2px 8px rgba(0, 0, 0, 0.35)",
+    "radius": "8px",
+    "navStyle": "minimal"
+  }
+}

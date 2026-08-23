@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "editableColors": [
+    "text",
+    "muted",
+    "accent",
+    "accent2",
+    "bg",
+    "surface",
+    "surface2",
+    "ok",
+    "warn",
+    "danger"
+  ],
+  "defaults": {
+    "preset": "void-glow"
+  }
+}

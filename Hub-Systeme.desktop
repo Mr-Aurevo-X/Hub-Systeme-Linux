@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=Hub Système
+Comment=Gestion système Linux (monitoring, services, nettoyeur…)
+Exec=bash -c 'SHARE="$(dirname "$(readlink -f "%k")")"; exec bash "$SHARE/LANCER.sh"'
+Icon=utilities-system-monitor
+Terminal=true
+Categories=System;Monitor;
+StartupNotify=true

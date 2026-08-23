@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "default": "void-glow",
+  "presets": [
+    { "id": "pc-command-canon", "label": "PC Command Canon", "file": "pc-command-canon.json" },
+    { "id": "neon-precision", "label": "Neon Precision", "file": "neon-precision.json" },
+    { "id": "soft-glass", "label": "Soft Glass", "file": "soft-glass.json" },
+    { "id": "graphite-minimal", "label": "Graphite Minimal", "file": "graphite-minimal.json" },
+    { "id": "void-glow", "label": "Void Glow", "file": "void-glow.json" },
+    { "id": "aurora-mint", "label": "Aurora Mint", "file": "aurora-mint.json" },
+    { "id": "nordic-ice", "label": "Nordic Ice", "file": "nordic-ice.json" },
+    { "id": "workshop-ember", "label": "Workshop Ember", "file": "workshop-ember.json" },
+    { "id": "signal-mono", "label": "Signal Mono", "file": "signal-mono.json" },
+    { "id": "slate-light", "label": "Slate Light", "file": "slate-light.json" }
+  ]
+}

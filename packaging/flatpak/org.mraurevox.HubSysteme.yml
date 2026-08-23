@@ -1,0 +1,45 @@
+app-id: org.mraurevox.HubSysteme
+runtime: org.gnome.Platform
+runtime-version: "49"
+sdk: org.gnome.Sdk
+command: hub-systeme
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --device=dri
+  - --filesystem=host
+  - --filesystem=xdg-config/hub-systeme:create
+  - --filesystem=xdg-data/hub-systeme:create
+  - --talk-name=org.freedesktop.Flatpak
+  - --talk-name=org.freedesktop.Notifications
+  - --system-talk-name=org.freedesktop.PolicyKit1
+  - --system-talk-name=org.freedesktop.systemd1
+  - --socket=system-bus
+  - --socket=session-bus
+modules:
+  - name: python3-psutil
+    buildsystem: simple
+    build-options:
+      build-args:
+        - --share=network
+    build-commands:
+      - python3 -m pip install --prefix=${FLATPAK_DEST} "psutil>=5.9,<8"
+  - name: hub-systeme
+    buildsystem: simple
+    build-commands:
+      - install -d ${FLATPAK_DEST}/share/hub-systeme
+      - find core ui ui_kit -type d -name __pycache__ -prune -exec rm -rf {} +
+      - find core ui ui_kit -type f -name '*.pyc' -delete
+      - cp -a main.py VERSION LICENSE COPYRIGHT LEGAL.md README.md requirements.txt core ui ui_kit ${FLATPAK_DEST}/share/hub-systeme/
+      - install -Dm755 packaging/flatpak/hub-systeme.in ${FLATPAK_DEST}/bin/hub-systeme
+      - install -Dm644 packaging/flatpak/org.mraurevox.HubSysteme.desktop
+        ${FLATPAK_DEST}/share/applications/org.mraurevox.HubSysteme.desktop
+      - install -Dm644 packaging/flatpak/org.mraurevox.HubSysteme.metainfo.xml
+        ${FLATPAK_DEST}/share/metainfo/org.mraurevox.HubSysteme.metainfo.xml
+      - install -Dm644 packaging/flatpak/org.mraurevox.HubSysteme.png
+        ${FLATPAK_DEST}/share/icons/hicolor/128x128/apps/org.mraurevox.HubSysteme.png
+    sources:
+      - type: dir
+        path: ../..

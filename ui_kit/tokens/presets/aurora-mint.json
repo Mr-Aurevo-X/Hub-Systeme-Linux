@@ -1,0 +1,28 @@
+{
+  "id": "aurora-mint",
+  "label": "Aurora Mint",
+  "description": "Mint stats — texte blanc, OK vert, alertes orange/rouge.",
+  "colors": {
+    "bg": "#081210",
+    "surface": "#0f1a16",
+    "surface2": "#142820",
+    "text": "#ffffff",
+    "muted": "#a8c4b8",
+    "accent": "#e03545",
+    "accent2": "#2dd4a8",
+    "ok": "#2ee8b0",
+    "warn": "#f0a840",
+    "danger": "#ff5c6b",
+    "border": "rgba(45, 212, 168, 0.12)",
+    "borderStrong": "rgba(45, 212, 168, 0.22)",
+    "accentDim": "rgba(45, 212, 168, 0.12)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 16px rgba(224, 53, 69, 0.3)",
+    "glowAccent2": "0 0 18px rgba(45, 212, 168, 0.25)",
+    "shadowCard": "0 10px 30px rgba(0, 0, 0, 0.4)",
+    "radius": "14px",
+    "navStyle": "bar"
+  }
+}

@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.class
+*.egg-info/
+.eggs/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual envs
+venv/
+.venv/
+env/
+
+# Editor / local
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
+.idea/
+*.swp
+*~
+
+# Build / dist (tarball produced by make dist)
+dist/*.tar.gz
+dist/*.tar.gz.sha256
+dist/*.flatpak
+dist/*.deb
+dist/*.sha256
+dist/flatpak-build/
+dist/flatpak-repo/
+dist/deb-stage/
+.flatpak-builder/
+
+# Logs / local runtime
+*.log
+.portfolio_*.tmp
+
+# Optional local secrets
+.env
+.env.*
+
+# graphify
+graphify-out/cost.json
+graphify-out/cache/
+graphify-out/.graphify_*
+graphify-out/.vocab.txt
+graphify-out/[0-9][0-9][0-9][0-9]-*/
+dist/release-*/

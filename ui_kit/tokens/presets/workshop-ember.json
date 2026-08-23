@@ -1,0 +1,28 @@
+{
+  "id": "workshop-ember",
+  "label": "Workshop Ember",
+  "description": "Ambre chaud — texte blanc crème, statuts lisibles.",
+  "colors": {
+    "bg": "#0a0907",
+    "surface": "#15120e",
+    "surface2": "#1c1812",
+    "text": "#ffffff",
+    "muted": "#c4b8a4",
+    "accent": "#e03545",
+    "accent2": "#e8a54b",
+    "ok": "#5cbc7a",
+    "warn": "#f5b020",
+    "danger": "#ff5c5c",
+    "border": "rgba(232, 165, 75, 0.12)",
+    "borderStrong": "rgba(232, 165, 75, 0.22)",
+    "accentDim": "rgba(232, 165, 75, 0.14)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 16px rgba(224, 53, 69, 0.26)",
+    "glowAccent2": "0 0 14px rgba(232, 165, 75, 0.22)",
+    "shadowCard": "0 12px 28px rgba(0, 0, 0, 0.5)",
+    "radius": "14px",
+    "navStyle": "ember"
+  }
+}

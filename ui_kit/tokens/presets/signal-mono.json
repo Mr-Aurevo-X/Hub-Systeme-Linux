@@ -1,0 +1,28 @@
+{
+  "id": "signal-mono",
+  "label": "Signal Mono",
+  "description": "Grayscale + rouge accent — blanc dominant.",
+  "colors": {
+    "bg": "#0b0b0d",
+    "surface": "#141416",
+    "surface2": "#1c1c20",
+    "text": "#ffffff",
+    "muted": "#b0b0b8",
+    "accent": "#e03545",
+    "accent2": "#9a9aa3",
+    "ok": "#7ab88a",
+    "warn": "#d4a84a",
+    "danger": "#ff5c6b",
+    "border": "rgba(255, 255, 255, 0.09)",
+    "borderStrong": "rgba(255, 255, 255, 0.13)",
+    "accentDim": "rgba(224, 53, 69, 0.14)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 10px rgba(224, 53, 69, 0.2)",
+    "glowAccent2": "none",
+    "shadowCard": "0 4px 16px rgba(0, 0, 0, 0.4)",
+    "radius": "10px",
+    "navStyle": "mono"
+  }
+}

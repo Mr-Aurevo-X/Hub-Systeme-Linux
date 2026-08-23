@@ -1,0 +1,28 @@
+{
+  "id": "soft-glass",
+  "label": "Soft Glass",
+  "description": "Panels doux — texte blanc lisible, statuts colorés.",
+  "colors": {
+    "bg": "#0a0c12",
+    "surface": "rgba(20, 24, 32, 0.92)",
+    "surface2": "#1a1f2a",
+    "text": "#ffffff",
+    "muted": "#b0b8c8",
+    "accent": "#e04555",
+    "accent2": "#5ec8e8",
+    "ok": "#4ade98",
+    "warn": "#f0b040",
+    "danger": "#ff5c6b",
+    "border": "rgba(255, 255, 255, 0.08)",
+    "borderStrong": "rgba(255, 255, 255, 0.13)",
+    "accentDim": "rgba(224, 69, 85, 0.12)",
+    "onAccent": "#ffffff"
+  },
+  "effects": {
+    "glowAccent": "0 0 12px rgba(224, 69, 85, 0.18)",
+    "glowAccent2": "0 0 10px rgba(94, 200, 232, 0.14)",
+    "shadowCard": "0 16px 40px rgba(0, 0, 0, 0.35)",
+    "radius": "16px",
+    "navStyle": "soft"
+  }
+}

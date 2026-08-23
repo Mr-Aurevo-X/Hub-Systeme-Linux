@@ -1,0 +1,31 @@
+# linux-flatpak-releases
+
+Releases **Flatpak** publiques pour les apps Linux Mr-Aurevo-X listées ici (pas de sources).  
+**Crypto Tracker** sur ce hub. **Hub Système** et **UtilKit** : releases sur leurs dépôts publics ([Gest_Linux_Pro](https://github.com/Mr-Aurevo-X/Hub-Systeme), [UtilKit](https://github.com/Mr-Aurevo-X/UtilKit)).
+
+Canal natif (zips / tar.gz) : https://github.com/Mr-Aurevo-X/linux-releases
+
+| App | Dernier tag | Paquet |
+| --- | --- | --- |
+| **Crypto Tracker** | [`crypto-tracker-v@CT_VERSION@`](https://github.com/Mr-Aurevo-X/linux-flatpak-releases/releases/tag/crypto-tracker-v@CT_VERSION@) | `org.mraurevox.CryptoTracker.flatpak` |
+
+## Crypto Tracker @CT_VERSION@
+
+```bash
+curl -fL -o org.mraurevox.CryptoTracker.flatpak \
+  https://github.com/Mr-Aurevo-X/linux-flatpak-releases/releases/download/crypto-tracker-v@CT_VERSION@/org.mraurevox.CryptoTracker.flatpak
+flatpak install --user -y ./org.mraurevox.CryptoTracker.flatpak
+flatpak run org.mraurevox.CryptoTracker
+```
+
+Prérequis : [Flatpak](https://flatpak.org/setup/) + Flathub + runtime Freedesktop 25.08.  
+Données : `~/.local/share/crypto-tracker/`
+
+### Mentions légales Crypto Tracker (CGU / RGPD)
+
+- **Copyright © 2026 Mr-Aurevo-X.** Logiciel propriétaire.
+- **CGU :** fourni « en l’état » ; pas un conseil en investissement ; pas de copie / redistribution sans autorisation.
+- **RGPD :** aucune collecte par Mr-Aurevo-X. Fichiers locaux `~/.local/share/crypto-tracker/`. Prix : CoinGecko / Binance. MAJ GitHub (désactivable).
+- Texte complet : [`LEGAL-Crypto-Tracker.md`](https://github.com/Mr-Aurevo-X/linux-flatpak-releases/blob/main/LEGAL-Crypto-Tracker.md) et [`LEGAL.md`](https://github.com/Mr-Aurevo-X/linux-flatpak-releases/releases/download/crypto-tracker-v@CT_VERSION@/LEGAL.md) (joint à la release). App : Paramètres → CGU / RGPD.
+
+© 2026 Mr-Aurevo-X. Crypto Tracker : propriétaire.

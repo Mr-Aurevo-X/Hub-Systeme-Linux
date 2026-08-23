@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: GPL-3.0-or-later
+set -euo pipefail
+export PYTHONPATH="/app/share/hub-systeme${PYTHONPATH:+:$PYTHONPATH}"
+cd /app/share/hub-systeme
+exec python3 /app/share/hub-systeme/main.py "$@"

@@ -1,0 +1,20 @@
+# Files included in Gest_Linux_Pro release tarballs
+VERSION
+LICENSE
+COPYRIGHT
+LEGAL.md
+README.md
+requirements.txt
+main.py
+install.sh
+uninstall.sh
+LANCER.sh
+INSTALLER-RACCOURCI.sh
+INSTALLER-RACCOURCI-FLATPAK.sh
+Hub-Systeme.desktop
+Makefile
+MANIFEST
+core/
+ui/
+packaging/
+docs/
