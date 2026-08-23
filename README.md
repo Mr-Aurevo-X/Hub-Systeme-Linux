@@ -1,7 +1,7 @@
 # Hub Système (Linux)
 
-> **WIP** — encore en développement. Pas une release publique.  
-> **WIP** — still in development. Not a public release.
+> **WIP** — encore en développement.  
+> **WIP** — still in development.
 
 > **Dépôt privé** — plateforme Linux Mr-Aurevo-X (GTK 4 + Uni-UI).  
 > **Private repo** — Mr-Aurevo-X Linux platform (GTK 4 + Uni-UI).
