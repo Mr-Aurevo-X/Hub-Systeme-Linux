@@ -80,6 +80,9 @@ If you like the work, a coffee — otherwise just enjoy it.
 
 [![Discord](https://img.shields.io/badge/Discord-Mr--Aurevo--X-5865F2?style=for-the-badge&logo=discord&logoColor=white&labelColor=050807)](https://discord.com/users/406891052516114442)
 
+Dons crypto : [liste complète sur le profil GitHub](https://github.com/Mr-Aurevo-X#user-content-support) (apps hub GTK : onglet **Soutien** / **Support** — copie locale).  
+Crypto donations: [full list on GitHub profile](https://github.com/Mr-Aurevo-X#user-content-support) (GTK hub apps: **Support** tab — copy addresses in-app).
+
 ---
 
 Copyright © 2026 Mr-Aurevo-X — GPL-3.0-or-later
