@@ -22,7 +22,7 @@ Logiciel fourni **en l'état**. Vous assumez les actions système que vous décl
 
 ## 5. Soutien facultatif
 
-Liens Discord, Revolut et PayPal : volontaires. Un don n'est pas un prix de licence et n'achète ni support ni mises à jour.
+Liens Discord et adresses crypto : volontaires. Un don n'est pas un prix de licence et n'achète ni support ni mises à jour.
 
 ## 6. Droit applicable
 

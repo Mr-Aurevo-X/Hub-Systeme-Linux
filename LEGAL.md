@@ -21,7 +21,7 @@ Mr-Aurevo-X **ne collecte aucune donnée personnelle**. Pas de compte, pas de t�
 - Stockage local : `~/.config/Mr-Aurevo-X/hubs/systeme/`
 - **Vérif. versions au démarrage** (Préférences, activée par défaut, désactivable) : GET `api.github.com/repos/Mr-Aurevo-X/Hub-Systeme-Linux/releases` (lecture seule). GitHub peut voir IP / User-Agent selon **sa** politique. Ce n’est pas un profilage par Mr-Aurevo-X.
 - Pages métier (processus, services, disque, paquets, journaux, etc.) : locales. Pas de sous-traitant hors GitHub pour la vérif. versions.
-- Dons Discord / PayPal / Revolut : sites de ces opérateurs, sur clic.
+- Dons Discord / crypto (in-app) : sites de ces opérateurs, sur clic.
 
 Droit belge.
 
@@ -50,7 +50,7 @@ Mr-Aurevo-X **collects no personal data**. No account, no telemetry, no ads, no 
 - Local storage: `~/.config/Mr-Aurevo-X/hubs/systeme/`
 - **Startup version check** (Preferences, on by default, can be disabled): GET `api.github.com/repos/Mr-Aurevo-X/Hub-Systeme-Linux/releases` (read-only). GitHub may see IP / User-Agent under **its** policy. This is not profiling by Mr-Aurevo-X.
 - Feature pages stay local. No publisher processors besides GitHub for the version check.
-- Donate links (Discord / PayPal / Revolut): those operators’ sites, on click.
+- Donate links (Discord / crypto (in-app)): those operators’ sites, on click.
 
 Belgian law.
 

@@ -42,7 +42,7 @@ def content_title_parts(
 
 
 def language_from_scale(value: float) -> str:
-    return "en" if value >= 0.5 else "fr"
+    return "en" if round(value) >= 1 else "fr"
 
 
 def scale_from_language(lang: str) -> float:
@@ -88,6 +88,13 @@ class ShellLayout:
         self._lang_scale: Gtk.Scale | None = None
         self._lang_fr_label: Gtk.Label | None = None
         self._lang_en_label: Gtk.Label | None = None
+        self._legal_btn: Gtk.Button | None = None
+        self._prefs_btn: Gtk.Button | None = None
+        self._parent: Gtk.Window | None = None
+        self._settings_snapshot: dict[str, Any] | None = None
+        self._current_version = ""
+        self._on_settings_save: Callable[[dict[str, Any]], None] | None = None
+        self._on_open_preferences: Callable[[], None] | None = None
         self._lang_scale_suppress = False
 
     @property
@@ -126,6 +133,11 @@ class ShellLayout:
     ) -> tuple[Gtk.Button, Gtk.Widget]:
         lang = normalize_language(current_language)
         self._lang = lang
+        self._parent = parent
+        self._settings_snapshot = settings_snapshot
+        self._current_version = current_version
+        self._on_settings_save = on_settings_save
+        self._on_open_preferences = on_open_preferences
 
         update_btn = _new_update_button()
         update_btn.add_css_class("uni-chrome-update")
@@ -156,7 +168,12 @@ class ShellLayout:
         def on_scale_changed(scale: Gtk.Scale) -> None:
             if self._lang_scale_suppress:
                 return
-            target = language_from_scale(scale.get_value())
+            rounded = round(scale.get_value())
+            if rounded != scale.get_value():
+                self._lang_scale_suppress = True
+                scale.set_value(rounded)
+                self._lang_scale_suppress = False
+            target = language_from_scale(rounded)
             if target == self._lang:
                 return
             on_language_toggle(target)
@@ -171,28 +188,42 @@ class ShellLayout:
 
         legal_btn = Gtk.Button.new_from_icon_name("help-about-symbolic")
         legal_btn.set_tooltip_text(t("legal", lang))
-        legal_btn.connect("clicked", lambda *_: legal_dialog.present(parent, lang))
+        legal_btn.connect("clicked", lambda *_: legal_dialog.present(self._parent, self._lang))
+        self._legal_btn = legal_btn
         self._content_header.pack_end(legal_btn)
 
         prefs_btn = Gtk.Button.new_from_icon_name("preferences-system-symbolic")
         prefs_btn.set_tooltip_text(t("preferences", lang))
-
-        def open_prefs() -> None:
-            if on_open_preferences is not None:
-                on_open_preferences()
-                return
-            settings_dialog.present(
-                parent,
-                settings_snapshot,
-                current_version=current_version,
-                lang=lang,
-                on_save=on_settings_save,
-            )
-
-        prefs_btn.connect("clicked", lambda *_: open_prefs())
+        prefs_btn.connect("clicked", lambda *_: self._open_preferences())
+        self._prefs_btn = prefs_btn
         self._content_header.pack_end(prefs_btn)
 
         return update_btn, lang_box
+
+    def _open_preferences(self) -> None:
+        if self._on_open_preferences is not None:
+            self._on_open_preferences()
+            return
+        if self._parent is None or self._on_settings_save is None or self._settings_snapshot is None:
+            return
+        settings_dialog.present(
+            self._parent,
+            self._settings_snapshot,
+            current_version=self._current_version,
+            lang=self._lang,
+            on_save=self._on_settings_save,
+        )
+
+    def update_chrome_texts(self, lang: str) -> None:
+        self._lang = normalize_language(lang)
+        if self._update_btn is not None:
+            self._update_btn.set_tooltip_text(t("check_updates", self._lang))
+        if self._lang_scale is not None:
+            self._lang_scale.set_tooltip_text(t("lang_toggle", self._lang))
+        if self._legal_btn is not None:
+            self._legal_btn.set_tooltip_text(t("legal", self._lang))
+        if self._prefs_btn is not None:
+            self._prefs_btn.set_tooltip_text(t("preferences", self._lang))
 
     def update_language_button(self, lang: str) -> None:
         self._lang = normalize_language(lang)

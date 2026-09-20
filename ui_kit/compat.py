@@ -67,6 +67,21 @@ def set_split_sidebar_visible(split: Gtk.Widget, visible: bool) -> None:
                 child.set_visible(visible)
 
 
+def copy_to_clipboard(text: str) -> None:
+    display = Gdk.Display.get_default()
+    if display is None:
+        return
+    clip = display.get_clipboard()
+    setter = getattr(clip, "set", None)
+    try:
+        if callable(setter):
+            setter(text)
+        else:
+            clip.set_content(Gdk.ContentProvider.new_for_value(text))
+    except (TypeError, GLib.Error):
+        clip.set_content(Gdk.ContentProvider.new_for_value(text))
+
+
 def open_external_uri(uri: str) -> None:
     try:
         Gio.AppInfo.launch_default_for_uri(uri, None)

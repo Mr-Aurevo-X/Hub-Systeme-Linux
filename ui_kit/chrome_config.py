@@ -5,7 +5,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ui_kit.donation_urls import DONATE_DISCORD, DONATE_PAYPAL, DONATE_REVOLUT
+from ui_kit.donation_urls import DONATE_DISCORD
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -26,19 +26,17 @@ UI_LANGUAGE = "fr"
 
 DONATE_URLS = {
     "discord": DONATE_DISCORD,
-    "revolut": DONATE_REVOLUT,
-    "paypal": DONATE_PAYPAL,
 }
 
 DONATE_MESSAGE = {
     "fr": (
         "Les apps publiques Mr-Aurevo-X sont et resteront gratuites.\n\n"
-        "Un petit coup de pouce (Discord, Revolut ou PayPal) aide le temps de dev — "
+        "Soutien optionnel : Discord ou adresses crypto (copier-coller). "
         "100 % optionnel. L'application ne suit pas les dons."
     ),
     "en": (
         "Mr-Aurevo-X public apps are and will stay free.\n\n"
-        "An optional tip (Discord, Revolut, or PayPal) helps development time — "
+        "Optional support: Discord or crypto addresses (copy-paste). "
         "never required. The app does not track donations."
     ),
 }

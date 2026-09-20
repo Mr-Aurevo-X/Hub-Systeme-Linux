@@ -36,8 +36,12 @@ _STRINGS: dict[str, dict[str, str]] = {
         "en": "No automatic install — copy commands into a terminal.",
     },
     "don_discord": {"fr": "Discord", "en": "Discord"},
-    "don_revolut": {"fr": "Revolut", "en": "Revolut"},
-    "don_paypal": {"fr": "PayPal", "en": "PayPal"},
+    "don_copy": {"fr": "Copier", "en": "Copy"},
+    "don_crypto_heading": {"fr": "Dons crypto", "en": "Crypto donations"},
+    "don_crypto_hint": {
+        "fr": "Copiez l’adresse et vérifiez le réseau (BTC, ETH, SOL, etc.) avant d’envoyer.",
+        "en": "Copy the address and verify the network (BTC, ETH, SOL, etc.) before sending.",
+    },
 }
 
 
