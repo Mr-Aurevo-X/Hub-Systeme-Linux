@@ -41,6 +41,11 @@
   </provides>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.1.5" date="2026-09-20">
+      <description>
+        <p>Soutien : Discord + crypto (onglet Soutien). PayPal/Revolut retirés.</p>
+      </description>
+    </release>
     <release version="1.1.4" date="2026-08-23">
       <description>
         <p>Check MAJ : /releases/latest + retry HTTP 502/504.</p>
